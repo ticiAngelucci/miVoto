@@ -1,1 +1,1 @@
-# miVoto
+# miVoto - proyecto  arquitectura
