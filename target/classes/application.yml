@@ -19,12 +19,28 @@ spring:
             issuer-uri: ${MIARG_ISSUER_URI}
 server:
   port: ${PORT:8080}
-firebase:
-  project-id: ${FIREBASE_PROJECT_ID}
-  credentials-file: ${GOOGLE_APPLICATION_CREDENTIALS}
-  use-emulator: ${FIREBASE_USE_EMULATOR:false}
-  emulator-host: ${FIREBASE_EMULATOR_HOST:localhost}
-  emulator-port: ${FIREBASE_EMULATOR_PORT:8088}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+app:
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:demo-mivoto}
+    use-emulator: ${FIREBASE_USE_EMULATOR:true}
+    emulator-host: ${FIREBASE_EMULATOR_HOST:localhost}
+    emulator-port: ${FIREBASE_EMULATOR_PORT:8088}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+app:
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID}
+    use-emulator: ${FIREBASE_USE_EMULATOR:false}
 web3:
   rpc-url: ${WEB3_RPC_URL}
   chain-id: ${WEB3_CHAIN_ID:80002}

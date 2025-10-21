@@ -20,8 +20,40 @@ public class EligibilityController {
     this.eligibilityService = eligibilityService;
   }
 
-  @PostMapping("/issue")
+  @PostMapping(
+      value = "/issue",
+      consumes = "application/json",
+      produces = "application/json"
+  )
   public ResponseEntity<EligibilityResponse> issue(@RequestBody @Valid EligibilityRequest request) {
-    return ResponseEntity.status(201).body(eligibilityService.issueEligibility(request));
+    EligibilityResponse resp = eligibilityService.issueEligibility(request);
+    // Si tu EligibilityResponse expone getId() o id(), arma Location
+    try {
+      String id = null;
+      try {
+        java.lang.reflect.Method m = resp.getClass().getMethod("getId");
+        Object idObj = m.invoke(resp);
+        if (idObj != null) {
+          id = String.valueOf(idObj);
+        }
+      } catch (NoSuchMethodException e1) {
+        try {
+          java.lang.reflect.Method m = resp.getClass().getMethod("id");
+          Object idObj = m.invoke(resp);
+          if (idObj != null) {
+            id = String.valueOf(idObj);
+          }
+        } catch (NoSuchMethodException e2) {
+          // no id method available
+        }
+      }
+      if (id != null && !id.isBlank()) {
+        var location = java.net.URI.create("/eligibility/" + id);
+        return ResponseEntity.created(location).body(resp);
+      }
+    } catch (Exception ignored) {
+      // If reflection invocation fails or other exceptions, devolvemos 201 sin Location
+    }
+    return ResponseEntity.status(201).body(resp);
   }
 }
