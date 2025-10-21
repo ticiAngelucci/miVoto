@@ -1,0 +1,19 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  security:
+    oauth2:
+      client:
+        registration:
+          miargentina:
+            client-secret: dev-secret # TODO: reemplazar por Secret Manager en dev
+firebase:
+  use-emulator: true
+  emulator-host: localhost
+  emulator-port: 8088
+web3:
+  rpc-url: http://127.0.0.1:8545
+logging:
+  level:
+    com.mivoto: debug
