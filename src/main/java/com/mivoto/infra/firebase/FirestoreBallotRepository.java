@@ -46,6 +46,6 @@ public class FirestoreBallotRepository implements BallotRepository {
   }
 
   private Instant toInstant(Timestamp timestamp) {
-    return timestamp == null ? null : timestamp.toInstant();
+    return timestamp == null ? null : timestamp.toDate().toInstant();
   }
 }

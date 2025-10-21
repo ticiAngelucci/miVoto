@@ -96,7 +96,7 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
 
   private VoteRecord fromDocument(DocumentSnapshot document) {
     Instant createdAt = document.contains("createdAt")
-        ? document.getTimestamp("createdAt").toInstant()
+        ? document.getTimestamp("createdAt").toDate().toInstant()
         : Instant.EPOCH;
     return new VoteRecord(
         document.getId(),

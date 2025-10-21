@@ -120,8 +120,8 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
   }
 
   private VoterEligibility fromDocument(DocumentSnapshot document) {
-    Instant issuedAt = document.getTimestamp("issuedAt").toInstant();
-    Instant expiresAt = document.getTimestamp("expiresAt").toInstant();
+    Instant issuedAt = document.getTimestamp("issuedAt").toDate().toInstant();
+    Instant expiresAt = document.getTimestamp("expiresAt").toDate().toInstant();
     String subjectHash = document.getString("subjectHash");
     String tokenHash = document.getString("tokenHash");
     String issuedBy = document.getString("issuedBy");

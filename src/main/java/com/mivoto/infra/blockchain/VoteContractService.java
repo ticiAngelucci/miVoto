@@ -61,7 +61,7 @@ public class VoteContractService {
   public VoteContractService(Web3j web3j, Credentials credentials, Web3Properties props) {
     this.web3j = Objects.requireNonNull(web3j);
     this.props = Objects.requireNonNull(props);
-    this.gasProvider = new StaticGasProvider(props.gasPrice(), props.gasLimit());
+    this.gasProvider = new StaticGasProvider(BigInteger.valueOf(props.gasPrice()), BigInteger.valueOf(props.gasLimit()));
     this.receiptProcessor = new PollingTransactionReceiptProcessor(
         web3j,
         Duration.ofSeconds(2).toMillis(),

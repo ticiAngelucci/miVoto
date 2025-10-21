@@ -11,11 +11,11 @@ public record Web3Properties(
     Long gasPrice,
     Long gasLimit
 ) {
-  public BigInteger gasPrice() {
+  public BigInteger gasPriceBigInteger() {
     return BigInteger.valueOf(gasPrice != null ? gasPrice : 20_000_000_000L);
   }
 
-  public BigInteger gasLimit() {
+  public BigInteger gasLimitBigInteger() {
     return BigInteger.valueOf(gasLimit != null ? gasLimit : 6_721_975L);
   }
 }
