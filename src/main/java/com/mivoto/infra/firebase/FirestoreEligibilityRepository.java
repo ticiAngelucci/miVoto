@@ -43,7 +43,12 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
       QuerySnapshot snapshot = future.get();
       if (!snapshot.isEmpty()) {
         QueryDocumentSnapshot doc = snapshot.getDocuments().get(0);
-        return Optional.of(fromDocument(doc));
+        VoterEligibility eligibility = fromDocument(doc);
+        if (eligibility.expiresAt().isBefore(Instant.now())) {
+          collection().document(eligibility.id()).update("status", EligibilityStatus.EXPIRED.name()).get();
+          return Optional.empty();
+        }
+        return Optional.of(eligibility);
       }
       return Optional.empty();
     } catch (Exception e) {
@@ -71,7 +76,11 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
   public VoterEligibility save(VoterEligibility eligibility) {
     String id = eligibility.id() != null ? eligibility.id() : UUID.randomUUID().toString();
     DocumentReference doc = collection().document(id);
-    doc.set(toDocument(eligibility)).isDone();
+    try {
+      doc.set(toDocument(eligibility)).get();
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to persist eligibility", e);
+    }
     return new VoterEligibility(
         id,
         eligibility.subjectHash(),
@@ -87,7 +96,11 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
   public void markConsumed(String tokenHash) {
     findByTokenHash(tokenHash).ifPresent(eligibility -> {
       DocumentReference doc = collection().document(eligibility.id());
-      doc.update("status", EligibilityStatus.CONSUMED.name());
+      try {
+        doc.update("status", EligibilityStatus.CONSUMED.name()).get();
+      } catch (Exception e) {
+        throw new IllegalStateException("Failed to mark eligibility as consumed", e);
+      }
     });
   }
 

@@ -62,34 +62,38 @@ public class EligibilityService {
       throw new EligibilityException("MiArgentina token invalid", ex);
     }
     String subjectHash = hashingService.hashSubject(user.subject());
-    repository.findActiveBySubjectHash(subjectHash).ifPresent(existing ->
-        log.info("Reusing active eligibility {} for subjectHash", existing.id()));
+    Instant now = Instant.now(clock);
+    repository.findActiveBySubjectHash(subjectHash).ifPresent(existing -> {
+      if (existing.expiresAt().isAfter(now) && existing.status() == EligibilityStatus.ACTIVE) {
+        throw new EligibilityException("An active eligibility already exists for this user");
+      }
+    });
 
     String rawToken = UUID.randomUUID().toString();
     byte[] salt = new byte[16];
     SECURE_RANDOM.nextBytes(salt);
-    Instant expiresAt = Instant.now(clock).plus(2, ChronoUnit.HOURS);
+    Instant expiresAt = now.plus(2, ChronoUnit.HOURS);
     String tokenHash = hashingService.hashToken(rawToken, salt);
 
     String encodedToken = codec.encode(rawToken, salt, expiresAt);
 
+    Instant issuedAt = now;
     VoterEligibility eligibility = new VoterEligibility(
         UUID.randomUUID().toString(),
         subjectHash,
-        Instant.now(clock),
+        issuedAt,
         expiresAt,
         tokenHash,
         EligibilityStatus.ACTIVE,
         "mi-argentina"
     );
+    try {
+      voteContractService.issueToken(tokenHash).join();
+    } catch (Exception e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      throw new EligibilityException("Failed to register eligibility on-chain", cause);
+    }
     repository.save(eligibility);
-    voteContractService.issueToken(prefixHex(tokenHash)).whenComplete((receipt, throwable) -> {
-      if (throwable != null) {
-        log.error("Failed to register tokenHash on-chain", throwable);
-      } else if (receipt != null) {
-        log.debug("Token registered on-chain tx {}", receipt.getTransactionHash());
-      }
-    });
     auditService.record("identity-service", "ELIGIBILITY_ISSUED", Map.of(
         "eligibilityId", eligibility.id(),
         "subjectHash", subjectHash
@@ -105,10 +109,4 @@ public class EligibilityService {
     return token;
   }
 
-  private String prefixHex(String hexWithoutPrefix) {
-    if (hexWithoutPrefix.startsWith("0x")) {
-      return hexWithoutPrefix;
-    }
-    return "0x" + hexWithoutPrefix;
-  }
 }

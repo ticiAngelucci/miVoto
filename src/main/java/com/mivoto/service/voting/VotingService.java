@@ -22,15 +22,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 @Service
 public class VotingService {
-
-  private static final Logger log = LoggerFactory.getLogger(VotingService.class);
 
   private final VoteRecordRepository voteRecordRepository;
   private final VoterEligibilityRepository eligibilityRepository;
@@ -74,29 +70,19 @@ public class VotingService {
     Instant now = Instant.now(clock);
     String receipt = hashingService.deriveReceipt(ballot.id(), voteHash, now);
 
-    VoteRecord record = new VoteRecord(
-        UUID.randomUUID().toString(),
-        ballot.id(),
-        voteHash,
-        tokenHash,
-        receipt,
-        null,
-        now
-    );
-    voteRecordRepository.save(record);
-
     long ballotNumericId = parseBallotId(ballot.id());
     CompletableFuture<TransactionReceipt> future = voteContractService.castVote(
         ballotNumericId,
-        prefixHex(tokenHash),
-        prefixHex(voteHash),
-        prefixHex(receipt));
+        tokenHash,
+        voteHash,
+        receipt);
 
     TransactionReceipt receiptOnChain;
     try {
       receiptOnChain = future.join();
     } catch (Exception e) {
-      throw new VotingException("Blockchain submission failed", e);
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      throw new VotingException("Blockchain submission failed", cause);
     }
 
     eligibilityRepository.markConsumed(tokenHash);
@@ -108,13 +94,13 @@ public class VotingService {
     ));
 
     VoteRecord completed = new VoteRecord(
-        record.id(),
-        record.ballotId(),
-        record.voteHash(),
-        record.tokenHash(),
-        record.receipt(),
+        UUID.randomUUID().toString(),
+        ballot.id(),
+        voteHash,
+        tokenHash,
+        receipt,
         receiptOnChain.getTransactionHash(),
-        record.createdAt()
+        now
     );
     voteRecordRepository.save(completed);
 
@@ -124,7 +110,7 @@ public class VotingService {
   public VerifyReceiptResponse verifyReceipt(String receipt) {
     Optional<VoteRecord> voteRecord = voteRecordRepository.findByReceipt(receipt);
     boolean offChain = voteRecord.isPresent();
-    boolean onChain = voteContractService.isReceiptRegistered(prefixHex(receipt));
+    boolean onChain = voteContractService.isReceiptRegistered(receipt);
     String ballotId = voteRecord.map(VoteRecord::ballotId).orElse("unknown");
     String txHash = voteRecord.map(VoteRecord::txHash).orElse(null);
     return new VerifyReceiptResponse(receipt, ballotId, onChain, offChain, txHash);
@@ -144,12 +130,5 @@ public class VotingService {
     } catch (NumberFormatException e) {
       throw new VotingException("Ballot id must be numeric for smart contract invocation", e);
     }
-  }
-
-  private String prefixHex(String hexWithoutPrefix) {
-    if (hexWithoutPrefix.startsWith("0x")) {
-      return hexWithoutPrefix;
-    }
-    return "0x" + hexWithoutPrefix;
   }
 }

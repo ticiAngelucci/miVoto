@@ -21,7 +21,7 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/miargentina/callback").disable())
+        .csrf(org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.POST, "/auth/miargentina/callback").permitAll()
             .requestMatchers(HttpMethod.GET, "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()

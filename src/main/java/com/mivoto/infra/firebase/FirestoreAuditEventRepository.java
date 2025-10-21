@@ -23,12 +23,16 @@ public class FirestoreAuditEventRepository implements AuditEventRepository {
   public AuditEvent save(AuditEvent event) {
     String id = event.id() != null ? event.id() : UUID.randomUUID().toString();
     DocumentReference doc = firestore.collection("audit_events").document(id);
-    doc.set(Map.of(
-        "actor", event.actor(),
-        "action", event.action(),
-        "metadata", event.metadata(),
-        "occurredAt", Timestamp.ofTimeSecondsAndNanos(event.occurredAt().getEpochSecond(), event.occurredAt().getNano())
-    ));
+    try {
+      doc.set(Map.of(
+          "actor", event.actor(),
+          "action", event.action(),
+          "metadata", event.metadata(),
+          "occurredAt", Timestamp.ofTimeSecondsAndNanos(event.occurredAt().getEpochSecond(), event.occurredAt().getNano())
+      )).get();
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to persist audit event", e);
+    }
     return new AuditEvent(id, event.actor(), event.action(), event.metadata(), event.occurredAt());
   }
 }

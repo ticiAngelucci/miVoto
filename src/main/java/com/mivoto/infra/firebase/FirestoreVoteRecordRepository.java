@@ -37,7 +37,11 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
   public VoteRecord save(VoteRecord record) {
     String id = record.id() != null ? record.id() : UUID.randomUUID().toString();
     DocumentReference doc = collection().document(id);
-    doc.set(toDocument(record)).isDone();
+    try {
+      doc.set(toDocument(record)).get();
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to persist vote record", e);
+    }
     return new VoteRecord(id, record.ballotId(), record.voteHash(), record.tokenHash(), record.receipt(), record.txHash(), record.createdAt());
   }
 
