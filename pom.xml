@@ -9,7 +9,7 @@
 
   <properties>
     <java.version>21</java.version>
-    <spring.boot.version>3.3.0</spring.boot.version>
+  <spring.boot.version>3.5.6</spring.boot.version>
     <web3j.version>4.10.3</web3j.version>
   </properties>
 
