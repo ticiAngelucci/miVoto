@@ -11,7 +11,7 @@ class EligibilityTokenCodecTest {
   @Test
   void encodeDecodeRoundTrip() {
     EligibilityTokenCodec codec = new EligibilityTokenCodec(new ObjectMapper());
-    Instant expiresAt = Instant.now().plusSeconds(60);
+    Instant expiresAt = Instant.now().plusSeconds(60).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
 
     String encoded = codec.encode("token", new byte[] {1, 2, 3}, expiresAt);
     EligibilityTokenCodec.DecodedToken decoded = codec.decode(encoded);

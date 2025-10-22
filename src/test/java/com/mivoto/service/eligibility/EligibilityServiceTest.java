@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mivoto.domain.repository.VoterEligibilityRepository;
-import com.mivoto.infra.blockchain.VoteContractService;
-import com.mivoto.infra.security.MiArgentinaTokenVerifier;
+import com.mivoto.repository.VoterEligibilityRepository;
+import com.mivoto.infrastructure.blockchain.VoteContractService;
+import com.mivoto.infrastructure.security.MiArgentinaTokenVerifier;
 import com.mivoto.service.audit.AuditService;
 import com.mivoto.support.EligibilityException;
 import com.mivoto.support.EligibilityTokenCodec;

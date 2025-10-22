@@ -1,7 +1,7 @@
 package com.mivoto.service.audit;
 
-import com.mivoto.domain.model.AuditEvent;
-import com.mivoto.domain.repository.AuditEventRepository;
+import com.mivoto.model.AuditEvent;
+import com.mivoto.repository.AuditEventRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;

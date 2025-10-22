@@ -1,13 +1,13 @@
 package com.mivoto.service.eligibility;
 
-import com.mivoto.api.dto.EligibilityRequest;
-import com.mivoto.api.dto.EligibilityResponse;
-import com.mivoto.domain.model.EligibilityStatus;
-import com.mivoto.domain.model.VoterEligibility;
-import com.mivoto.domain.repository.VoterEligibilityRepository;
-import com.mivoto.infra.blockchain.VoteContractService;
-import com.mivoto.infra.security.MiArgentinaTokenVerifier;
-import com.mivoto.infra.security.MiArgentinaTokenVerifier.MiArgentinaUser;
+import com.mivoto.controller.dto.EligibilityRequest;
+import com.mivoto.controller.dto.EligibilityResponse;
+import com.mivoto.model.EligibilityStatus;
+import com.mivoto.model.VoterEligibility;
+import com.mivoto.repository.VoterEligibilityRepository;
+import com.mivoto.infrastructure.blockchain.VoteContractService;
+import com.mivoto.infrastructure.security.MiArgentinaTokenVerifier;
+import com.mivoto.security.SessionUser;
 import com.mivoto.service.audit.AuditService;
 import com.mivoto.support.EligibilityException;
 import com.mivoto.support.EligibilityTokenCodec;
@@ -55,7 +55,7 @@ public class EligibilityService {
   }
 
   public EligibilityResponse issueEligibility(EligibilityRequest request) {
-    MiArgentinaUser user;
+    SessionUser user;
     try {
       user = tokenVerifier.verify(request.idToken());
     } catch (IllegalArgumentException ex) {
@@ -65,7 +65,7 @@ public class EligibilityService {
     Instant now = Instant.now(clock);
     repository.findActiveBySubjectHash(subjectHash).ifPresent(existing -> {
       if (existing.expiresAt().isAfter(now) && existing.status() == EligibilityStatus.ACTIVE) {
-        throw new EligibilityException("An active eligibility already exists for this user");
+        repository.markConsumed(existing.tokenHash());
       }
     });
 

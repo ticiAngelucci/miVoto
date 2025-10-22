@@ -1,6 +1,6 @@
 package com.mivoto.support;
 
-import com.mivoto.app.config.SecurityProperties;
+import com.mivoto.config.SecurityProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

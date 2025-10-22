@@ -7,7 +7,7 @@ spring:
       client:
         registration:
           miargentina:
-            client-secret: dev-secret # TODO: reemplazar por Secret Manager en dev
+            client-secret: ${MIARG_CLIENT_SECRET:stub-secret}
 firebase:
   use-emulator: true
   emulator-host: localhost

@@ -1,7 +1,7 @@
 package com.mivoto.service.voting;
 
-import com.mivoto.domain.model.Ballot;
-import com.mivoto.domain.repository.BallotRepository;
+import com.mivoto.model.Ballot;
+import com.mivoto.repository.BallotRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;

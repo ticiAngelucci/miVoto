@@ -9,48 +9,51 @@ spring:
       client:
         registration:
           miargentina:
-            client-id: ${MIARG_CLIENT_ID}
-            client-secret: ${MIARG_CLIENT_SECRET}
-            scope: openid,profile
-            redirect-uri: "{baseUrl}/auth/miargentina/callback"
+            client-id: ${MIARG_CLIENT_ID:stub-client}
+            client-secret: ${MIARG_CLIENT_SECRET:stub-secret}
+            scope: ${MIARG_SCOPE:openid,profile}
+            redirect-uri: ${MIARG_REDIRECT_URI:http://localhost:8080/auth/miargentina/callback}
             authorization-grant-type: authorization_code
         provider:
           miargentina:
-            issuer-uri: ${MIARG_ISSUER_URI}
+            authorization-uri: ${MIARG_AUTHORIZATION_URI:http://localhost:9999/oauth/authorize}
+            token-uri: ${MIARG_TOKEN_URI:http://localhost:9999/oauth/token}
+            jwk-set-uri: ${MIARG_JWK_SET_URI:http://localhost:9999/.well-known/jwks.json}
 server:
   port: ${PORT:8080}
 
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-app:
-  firebase:
-    project-id: ${FIREBASE_PROJECT_ID:demo-mivoto}
-    use-emulator: ${FIREBASE_USE_EMULATOR:true}
-    emulator-host: ${FIREBASE_EMULATOR_HOST:localhost}
-    emulator-port: ${FIREBASE_EMULATOR_PORT:8088}
+firebase:
+  project-id: ${FIREBASE_PROJECT_ID:demo-mivoto}
+  credentials-file: ${GOOGLE_APPLICATION_CREDENTIALS:}
+  use-emulator: ${FIREBASE_USE_EMULATOR:true}
+  emulator-host: ${FIREBASE_EMULATOR_HOST:localhost}
+  emulator-port: ${FIREBASE_EMULATOR_PORT:8088}
 
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-app:
-  firebase:
-    project-id: ${FIREBASE_PROJECT_ID}
-    use-emulator: ${FIREBASE_USE_EMULATOR:false}
 web3:
-  rpc-url: ${WEB3_RPC_URL}
+  rpc-url: ${WEB3_RPC_URL:http://localhost:8545}
   chain-id: ${WEB3_CHAIN_ID:80002}
-  contract-address: ${VOTE_CONTRACT_ADDR}
+  contract-address: ${VOTE_CONTRACT_ADDR:0x0000000000000000000000000000000000000000}
   gas-price: ${WEB3_GAS_PRICE:20000000000}
   gas-limit: ${WEB3_GAS_LIMIT:6721975}
+  mock-enabled: ${WEB3_MOCK_ENABLED:true}
+
 security:
-  subject-pepper: ${ELIGIBILITY_SUBJECT_PEPPER}
-  token-pepper: ${ELIGIBILITY_TOKEN_PEPPER}
+  subject-pepper: ${ELIGIBILITY_SUBJECT_PEPPER:change-me}
+  token-pepper: ${ELIGIBILITY_TOKEN_PEPPER:change-me-too}
+
 jwt:
   issuer: ${JWT_ISSUER:https://mivoto.backend}
-  jwk-set-uri: ${JWT_JWK_SET_URI}
+  jwk-set-uri: ${JWT_JWK_SET_URI:https://mivoto.backend/.well-known/jwks.json}
   audience: ${JWT_AUDIENCE:mi-voto}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health"
+      cors:
+        allowed-origins: ${FRONT_ORIGIN:http://localhost:3000}
+        allowed-origin-patterns: ${FRONT_ORIGIN:http://localhost:3000}
+        allowed-methods: "*"
+        allowed-headers: "*"
+        allow-credentials: true

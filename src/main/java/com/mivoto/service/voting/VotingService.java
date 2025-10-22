@@ -1,15 +1,15 @@
 package com.mivoto.service.voting;
 
-import com.mivoto.api.dto.CastVoteRequest;
-import com.mivoto.api.dto.CastVoteResponse;
-import com.mivoto.api.dto.TallyResponse;
-import com.mivoto.api.dto.VerifyReceiptResponse;
-import com.mivoto.domain.model.Ballot;
-import com.mivoto.domain.model.EligibilityStatus;
-import com.mivoto.domain.model.VoteRecord;
-import com.mivoto.domain.repository.VoteRecordRepository;
-import com.mivoto.domain.repository.VoterEligibilityRepository;
-import com.mivoto.infra.blockchain.VoteContractService;
+import com.mivoto.controller.dto.CastVoteRequest;
+import com.mivoto.controller.dto.CastVoteResponse;
+import com.mivoto.controller.dto.TallyResponse;
+import com.mivoto.controller.dto.VerifyReceiptResponse;
+import com.mivoto.model.Ballot;
+import com.mivoto.model.EligibilityStatus;
+import com.mivoto.model.VoteRecord;
+import com.mivoto.repository.VoteRecordRepository;
+import com.mivoto.repository.VoterEligibilityRepository;
+import com.mivoto.infrastructure.blockchain.VoteContractService;
 import com.mivoto.service.audit.AuditService;
 import com.mivoto.service.eligibility.EligibilityService;
 import com.mivoto.support.EligibilityTokenCodec.DecodedToken;

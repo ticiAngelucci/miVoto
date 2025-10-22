@@ -1,0 +1,56 @@
+services:
+  miargentina-mock:
+    build:
+      context: ./mock/miargentina
+    image: miargentina-mock:latest
+    container_name: miargentina-mock
+    environment:
+      PORT: 9999
+      BASE_URL: http://miargentina-mock:9999
+      PUBLIC_BASE_URL: http://localhost:9999
+      CLIENT_ID: stub-client
+      CLIENT_SECRET: stub-secret
+      DEFAULT_REDIRECT_URI: http://localhost:8080/auth/miargentina/callback
+    ports:
+      - "9999:9999"
+    networks:
+      - mivoto-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mivoto-backend:latest
+    container_name: mivoto-backend
+    env_file:
+      - ./docker/env/backend.env
+    ports:
+      - "8080:8080"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    depends_on:
+      - miargentina-mock
+    networks:
+      - mivoto-net
+
+  frontend:
+    build:
+      context: ./frontend/miVotoFrontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+        VITE_OAUTH_AUTHORIZE_URL: http://localhost:9999/oauth/authorize
+        VITE_MIARG_CLIENT_ID: stub-client
+        VITE_MIARG_REDIRECT_URI: http://localhost:8080/auth/miargentina/callback
+    image: mivoto-frontend:latest
+    container_name: mivoto-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - mivoto-net
+
+networks:
+  mivoto-net:
+    driver: bridge

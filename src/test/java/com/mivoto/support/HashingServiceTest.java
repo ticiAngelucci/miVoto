@@ -2,7 +2,7 @@ package com.mivoto.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mivoto.app.config.SecurityProperties;
+import com.mivoto.config.SecurityProperties;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
