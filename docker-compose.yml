@@ -27,9 +27,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /opt/mivoto/firebase.json
     depends_on:
       - miargentina-mock
+    volumes:
+      - ./docker/creds/firebase.json:/opt/mivoto/firebase.json:ro
     networks:
       - mivoto-net
 

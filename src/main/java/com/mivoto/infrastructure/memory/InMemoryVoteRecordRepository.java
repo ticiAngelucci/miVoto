@@ -3,11 +3,12 @@ package com.mivoto.infrastructure.memory;
 import com.mivoto.model.VoteRecord;
 import com.mivoto.repository.VoteRecordRepository;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -23,6 +24,8 @@ public class InMemoryVoteRecordRepository implements VoteRecordRepository {
     VoteRecord normalized = new VoteRecord(
         id,
         record.ballotId(),
+        record.institutionId(),
+        record.candidateIds() != null ? List.copyOf(record.candidateIds()) : List.of(),
         record.voteHash(),
         record.tokenHash(),
         record.receipt(),
@@ -42,8 +45,11 @@ public class InMemoryVoteRecordRepository implements VoteRecordRepository {
 
   @Override
   public Map<String, Long> tallyByBallot(String ballotId) {
-    return store.values().stream()
+    Map<String, Long> counts = new HashMap<>();
+    store.values().stream()
         .filter(record -> record.ballotId().equals(ballotId))
-        .collect(Collectors.groupingBy(VoteRecord::voteHash, Collectors.counting()));
+        .forEach(record -> record.candidateIds().forEach(candidateId ->
+            counts.merge(candidateId, 1L, Long::sum)));
+    return counts;
   }
 }

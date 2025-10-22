@@ -8,7 +8,7 @@
   <description>Mi Voto backend base</description>
 
   <properties>
-    <java.version>17</java.version>
+    <java.version>21</java.version>
   <spring.boot.version>3.5.6</spring.boot.version>
     <web3j.version>4.10.3</web3j.version>
   </properties>
@@ -110,9 +110,32 @@
           <release>${java.version}</release>
         </configuration>
       </plugin>
+      <!-- Ensure build fails early if JDK is not compatible -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.2.1</version>
+        <executions>
+          <execution>
+            <id>enforce-java</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,)</version>
+                </requireJavaVersion>
+              </rules>
+              <failFast>true</failFast>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring.boot.version}</version>
         <executions>
           <execution>
             <goals>

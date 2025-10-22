@@ -50,3 +50,43 @@ npm run dev
 ```bash
 mvn test
 ```
+
+## Paso 2 – Gestión de instituciones, candidatos y flujo de voto
+
+- **Instituciones y candidatos:**
+  - CRUD disponible en `POST/GET/PUT/DELETE /institutions/{id}` y `POST/GET/PUT/DELETE /candidates/{id}`.
+  - `GET /candidates` acepta `?institutionId=` para filtrar por institución.
+- **Voto real:**
+  - `POST /votes/cast` ahora espera un cuerpo con selección explícita de institución y candidatos:
+
+    ```json
+    {
+      "ballotId": "1",
+      "eligibilityToken": "...",
+      "selection": {
+        "institutionId": "inst-1",
+        "candidateIds": ["cand-1"]
+      }
+    }
+    ```
+
+  - La selección se valida contra la boleta y los candidatos activos de la institución.
+- **Recuento:**
+  - `GET /ballots/{id}/tally` devuelve resultados normalizados por candidato incluyendo nombre/lista y momento del cálculo.
+
+## Paso 3 – Cierre y publicación de resultados
+
+- **Finalización de boleta:**
+  - `POST /ballots/{id}/finalize` sólo permite cerrar boletas cuyo período ya terminó. Guarda el snapshot con hash de verificación y emite evento de auditoría.
+  - `GET /ballots/{id}/result` recupera el snapshot final (404 si aún no se cerró).
+- **Integridad:**
+  - El backend almacena un `checksum` (`HashingService.hashTally`) derivado de los votos y la marca de tiempo. Ese valor se devuelve al frontend para validar en reportes externos.
+
+## Paso 4 – Frontend operativo
+
+- Nueva UI en Vite/React que consume los endpoints mock del backend:
+  - Lista instituciones, candidatos y boletas mediante `GET /institutions`, `/candidates` y `/ballots`.
+  - Permite emitir votos reales (`POST /votes/cast`) seleccionando candidatos y pegando el token de elegibilidad.
+  - Visualiza recuento en vivo (`GET /ballots/{id}/tally`), cierre definitivo (`POST /ballots/{id}/finalize`, `GET /ballots/{id}/result`) y verifica recibos (`GET /votes/{receipt}/verify`).
+- El build se valida con `npm run build` dentro de `frontend/miVotoFrontend`.
+- En Firestore, las colecciones utilizadas por el backend llevan nombres en español: `instituciones`, `candidatos`, `boletas`, `votos` y `resultadosBoleta`.

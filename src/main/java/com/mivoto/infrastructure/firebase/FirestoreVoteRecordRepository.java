@@ -27,7 +27,7 @@ import org.springframework.stereotype.Repository;
 public class FirestoreVoteRecordRepository implements VoteRecordRepository {
 
   private static final Logger log = LoggerFactory.getLogger(FirestoreVoteRecordRepository.class);
-  private static final String COLLECTION = "votes";
+  private static final String COLLECTION = "votos";
 
   private final Firestore firestore;
 
@@ -44,7 +44,17 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
     } catch (Exception e) {
       throw new IllegalStateException("Failed to persist vote record", e);
     }
-    return new VoteRecord(id, record.ballotId(), record.voteHash(), record.tokenHash(), record.receipt(), record.txHash(), record.createdAt());
+    return new VoteRecord(
+        id,
+        record.ballotId(),
+        record.institutionId(),
+        record.candidateIds(),
+        record.voteHash(),
+        record.tokenHash(),
+        record.receipt(),
+        record.txHash(),
+        record.createdAt()
+    );
   }
 
   @Override
@@ -70,10 +80,13 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
       List<QueryDocumentSnapshot> docs = query.get().get().getDocuments();
       Map<String, Long> counts = new HashMap<>();
       for (DocumentSnapshot doc : docs) {
-        String voteHash = doc.getString("voteHash");
-        counts.merge(voteHash, 1L, Long::sum);
+        List<String> candidateIds = doc.contains("candidateIds")
+            ? (List<String>) doc.get("candidateIds")
+            : List.of();
+        for (String candidateId : candidateIds) {
+          counts.merge(candidateId, 1L, Long::sum);
+        }
       }
-      // TODO: correlacionar voteHash con opciones reales off-chain usando canal seguro.
       return counts;
     } catch (Exception e) {
       log.error("Failed to compute tally for ballot {}", ballotId, e);
@@ -88,10 +101,12 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
   private Map<String, Object> toDocument(VoteRecord record) {
     return Map.of(
         "ballotId", record.ballotId(),
+        "institutionId", record.institutionId(),
         "voteHash", record.voteHash(),
         "tokenHash", record.tokenHash(),
         "receipt", record.receipt(),
         "txHash", record.txHash(),
+        "candidateIds", record.candidateIds(),
         "createdAt", Timestamp.ofTimeSecondsAndNanos(record.createdAt().getEpochSecond(), record.createdAt().getNano())
     );
   }
@@ -100,9 +115,14 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
     Instant createdAt = document.contains("createdAt")
         ? document.getTimestamp("createdAt").toDate().toInstant()
         : Instant.EPOCH;
+    List<String> candidateIds = document.contains("candidateIds")
+        ? (List<String>) document.get("candidateIds")
+        : List.of();
     return new VoteRecord(
         document.getId(),
         document.getString("ballotId"),
+        document.getString("institutionId"),
+        candidateIds,
         document.getString("voteHash"),
         document.getString("tokenHash"),
         document.getString("receipt"),

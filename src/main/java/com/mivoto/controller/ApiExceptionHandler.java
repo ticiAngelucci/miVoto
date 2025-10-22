@@ -1,6 +1,7 @@
 package com.mivoto.controller;
 
 import com.mivoto.support.EligibilityException;
+import com.mivoto.support.ResourceNotFoundException;
 import com.mivoto.support.VotingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -28,5 +29,10 @@ public class ApiExceptionHandler {
   @ExceptionHandler(IllegalStateException.class)
   public ProblemDetail handleIllegalState(IllegalStateException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
   }
 }

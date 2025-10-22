@@ -3,6 +3,7 @@ package com.mivoto.infrastructure.memory;
 import com.mivoto.model.Ballot;
 import com.mivoto.repository.BallotRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,8 +20,9 @@ public class InMemoryBallotRepository implements BallotRepository {
   public InMemoryBallotRepository() {
     ballots.put("1", new Ballot(
         "1",
+        "inst-1",
         "Consulta popular de prueba",
-        List.of("SI", "NO"),
+        List.of("cand-1", "cand-2"),
         Instant.now().minusSeconds(3600),
         Instant.now().plusSeconds(86400),
         false
@@ -30,5 +32,10 @@ public class InMemoryBallotRepository implements BallotRepository {
   @Override
   public Optional<Ballot> findById(String id) {
     return Optional.ofNullable(ballots.get(id));
+  }
+
+  @Override
+  public List<Ballot> findAll() {
+    return new ArrayList<>(ballots.values());
   }
 }

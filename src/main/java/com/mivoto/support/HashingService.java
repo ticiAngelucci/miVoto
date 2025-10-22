@@ -43,6 +43,18 @@ public class HashingService {
     return sha256Hex(material.getBytes(StandardCharsets.UTF_8));
   }
 
+  public String hashTally(String ballotId, Map<String, Long> candidateVotes, Instant computedAt) {
+    StringBuilder builder = new StringBuilder(ballotId).append(':').append(computedAt.toEpochMilli());
+    candidateVotes.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(entry -> builder
+            .append('|')
+            .append(entry.getKey())
+            .append('=')
+            .append(entry.getValue()));
+    return sha256Hex(builder.toString().getBytes(StandardCharsets.UTF_8));
+  }
+
   public String sha256Hex(byte[] data) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
