@@ -8,10 +8,12 @@ import com.google.cloud.firestore.QuerySnapshot;
 import com.mivoto.model.Ballot;
 import com.mivoto.repository.BallotRepository;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -58,6 +60,19 @@ public class FirestoreBallotRepository implements BallotRepository {
     }
   }
 
+  @Override
+  public Ballot save(Ballot ballot) {
+    try {
+      firestore.collection(COLLECTION)
+          .document(ballot.id())
+          .set(toDocument(ballot))
+          .get();
+      return ballot;
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to persist ballot", e);
+    }
+  }
+
   private Ballot fromDocument(DocumentSnapshot document) {
     Instant opensAt = document.contains("opensAt") ? toInstant(document.getTimestamp("opensAt")) : null;
     Instant closesAt = document.contains("closesAt") ? toInstant(document.getTimestamp("closesAt")) : null;
@@ -78,5 +93,20 @@ public class FirestoreBallotRepository implements BallotRepository {
 
   private Instant toInstant(Timestamp timestamp) {
     return timestamp == null ? null : timestamp.toDate().toInstant();
+  }
+
+  private Map<String, Object> toDocument(Ballot ballot) {
+    Map<String, Object> data = new HashMap<>();
+    data.put("institutionId", ballot.institutionId());
+    data.put("title", ballot.title());
+    data.put("candidateIds", ballot.candidateIds());
+    if (ballot.opensAt() != null) {
+      data.put("opensAt", Timestamp.ofTimeSecondsAndNanos(ballot.opensAt().getEpochSecond(), ballot.opensAt().getNano()));
+    }
+    if (ballot.closesAt() != null) {
+      data.put("closesAt", Timestamp.ofTimeSecondsAndNanos(ballot.closesAt().getEpochSecond(), ballot.closesAt().getNano()));
+    }
+    data.put("allowMultipleSelection", ballot.allowMultipleSelection());
+    return data;
   }
 }

@@ -71,6 +71,7 @@ mvn test
     ```
 
   - La selección se valida contra la boleta y los candidatos activos de la institución.
+  - Si tenés una sesión iniciada podés generar el token con `POST /eligibility/issue/session` (la UI expone el botón "Obtener token desde la sesión").
 - **Recuento:**
   - `GET /ballots/{id}/tally` devuelve resultados normalizados por candidato incluyendo nombre/lista y momento del cálculo.
 
@@ -86,7 +87,8 @@ mvn test
 
 - Nueva UI en Vite/React que consume los endpoints mock del backend:
   - Lista instituciones, candidatos y boletas mediante `GET /institutions`, `/candidates` y `/ballots`.
-  - Permite emitir votos reales (`POST /votes/cast`) seleccionando candidatos y pegando el token de elegibilidad.
+  - Permite emitir votos reales (`POST /votes/cast`) seleccionando candidatos y obteniendo el token de elegibilidad desde la sesión.
   - Visualiza recuento en vivo (`GET /ballots/{id}/tally`), cierre definitivo (`POST /ballots/{id}/finalize`, `GET /ballots/{id}/result`) y verifica recibos (`GET /votes/{receipt}/verify`).
 - El build se valida con `npm run build` dentro de `frontend/miVotoFrontend`.
 - En Firestore, las colecciones utilizadas por el backend llevan nombres en español: `instituciones`, `candidatos`, `boletas`, `votos` y `resultadosBoleta`.
+- Para precargar datos demo habilitá `SEED_ENABLED=true` y ejecutá `POST /seed/default` (crea institución, candidatos y boleta si no existen).

@@ -33,6 +33,9 @@ function App() {
   const [selectedBallotId, setSelectedBallotId] = useState('')
   const [selectedCandidates, setSelectedCandidates] = useState([])
   const [eligibilityToken, setEligibilityToken] = useState('')
+  const [eligibilityExpiresAt, setEligibilityExpiresAt] = useState(null)
+  const [eligibilityRequestError, setEligibilityRequestError] = useState(null)
+  const [eligibilityRequestLoading, setEligibilityRequestLoading] = useState(false)
 
   const [voteResult, setVoteResult] = useState(null)
   const [voteError, setVoteError] = useState(null)
@@ -161,6 +164,14 @@ function App() {
     loadSession()
     return () => { cancelled = true }
   }, [fetchJson])
+
+  useEffect(() => {
+    if (!session) {
+      setEligibilityToken('')
+      setEligibilityExpiresAt(null)
+      setEligibilityRequestError(null)
+    }
+  }, [session])
 
   useEffect(() => {
     let cancelled = false
@@ -349,8 +360,31 @@ function App() {
     fetchJson('/auth/logout', { method: 'POST' })
       .then(() => {
         setSession(null)
+        setEligibilityToken('')
+        setEligibilityExpiresAt(null)
+        setEligibilityRequestError(null)
       })
       .catch((err) => setSessionError(err.message))
+  }
+
+  const handleRequestEligibility = async () => {
+    if (!session) {
+      setEligibilityRequestError('Necesitás iniciar sesión para solicitar el token.')
+      return
+    }
+    setEligibilityRequestLoading(true)
+    setEligibilityRequestError(null)
+    try {
+      const data = await fetchJson('/eligibility/issue/session', { method: 'POST' })
+      if (data) {
+        setEligibilityToken(data.eligibilityToken ?? '')
+        setEligibilityExpiresAt(data.expiresAt ?? null)
+      }
+    } catch (err) {
+      setEligibilityRequestError(err.message)
+    } finally {
+      setEligibilityRequestLoading(false)
+    }
   }
 
   const handleCandidateToggle = (candidateId) => {
@@ -386,7 +420,7 @@ function App() {
       return
     }
     if (!eligibilityToken.trim()) {
-      setVoteError('Ingresá tu token de elegibilidad emitido por MiArgentina.')
+      setVoteError('Solicitá un token de elegibilidad o ingresá uno válido antes de votar.')
       return
     }
 
@@ -407,6 +441,7 @@ function App() {
       })
       setVoteResult(data)
       setEligibilityToken('')
+      setEligibilityExpiresAt(null)
       if (!selectedBallot.allowMultipleSelection) {
         setSelectedCandidates([])
       }
@@ -600,13 +635,28 @@ function App() {
               </fieldset>
             )}
 
+            <div className="eligibility-tools">
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleRequestEligibility}
+                disabled={eligibilityRequestLoading}
+              >
+                {eligibilityRequestLoading ? 'Solicitando token…' : 'Obtener token desde la sesión'}
+              </button>
+              {eligibilityExpiresAt && (
+                <span className="muted">Válido hasta: {formatDateTime(eligibilityExpiresAt)}</span>
+              )}
+            </div>
+            {eligibilityRequestError && <p className="error">{eligibilityRequestError}</p>}
+
             <label className="field">
               <span>Token de elegibilidad</span>
               <input
                 type="text"
                 value={eligibilityToken}
                 onChange={(event) => setEligibilityToken(event.target.value)}
-                placeholder="Pega aquí tu token emitido por MiArgentina"
+                placeholder="Solicitá el token o pegalo manualmente"
               />
             </label>
 

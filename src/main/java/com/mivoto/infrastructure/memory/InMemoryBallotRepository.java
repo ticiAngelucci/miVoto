@@ -38,4 +38,10 @@ public class InMemoryBallotRepository implements BallotRepository {
   public List<Ballot> findAll() {
     return new ArrayList<>(ballots.values());
   }
+
+  @Override
+  public Ballot save(Ballot ballot) {
+    ballots.put(ballot.id(), ballot);
+    return ballot;
+  }
 }

@@ -9,4 +9,6 @@ public interface BallotRepository {
   Optional<Ballot> findById(String id);
 
   List<Ballot> findAll();
+
+  Ballot save(Ballot ballot);
 }

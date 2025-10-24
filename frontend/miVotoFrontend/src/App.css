@@ -217,6 +217,14 @@ textarea:focus {
   box-shadow: inset 0 0 0 1px #2563eb55;
 }
 
+.eligibility-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
