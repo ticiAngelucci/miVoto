@@ -41,7 +41,7 @@ public class BallotController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<BallotResponse> get(@PathVariable String id) {
+  public ResponseEntity<BallotResponse> get(@PathVariable("id") String id) {
     Instant now = Instant.now(clock);
     return ballotService.findBallot(id)
         .map(ballot -> ResponseEntity.ok(toResponse(ballot, now)))
@@ -49,17 +49,17 @@ public class BallotController {
   }
 
   @GetMapping("/{id}/tally")
-  public ResponseEntity<TallyResponse> tally(@PathVariable String id) {
+  public ResponseEntity<TallyResponse> tally(@PathVariable("id") String id) {
     return ResponseEntity.ok(votingService.tally(id));
   }
 
   @GetMapping("/{id}/result")
-  public ResponseEntity<BallotResultResponse> result(@PathVariable String id) {
+  public ResponseEntity<BallotResultResponse> result(@PathVariable("id") String id) {
     return ResponseEntity.ok(votingService.getFinalResult(id));
   }
 
   @PostMapping("/{id}/finalize")
-  public ResponseEntity<BallotResultResponse> finalizeBallot(@PathVariable String id) {
+  public ResponseEntity<BallotResultResponse> finalizeBallot(@PathVariable("id") String id) {
     return ResponseEntity.ok(votingService.finalizeBallot(id));
   }
 

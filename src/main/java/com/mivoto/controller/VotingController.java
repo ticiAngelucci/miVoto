@@ -29,7 +29,7 @@ public class VotingController {
   }
 
   @GetMapping("/{receipt}/verify")
-  public ResponseEntity<VerifyReceiptResponse> verify(@PathVariable String receipt) {
+  public ResponseEntity<VerifyReceiptResponse> verify(@PathVariable("receipt") String receipt) {
     return ResponseEntity.ok(votingService.verifyReceipt(receipt));
   }
 }

@@ -89,31 +89,39 @@ public class SeedService {
     );
   }
 
+  public Ballot closeBallotNow(String ballotId) {
+    Ballot ballot = ballotRepository.findById(ballotId)
+        .orElseThrow(() -> new IllegalArgumentException("Boleta no encontrada: " + ballotId));
+    Instant now = Instant.now(clock);
+    Ballot closed = new Ballot(
+        ballot.id(),
+        ballot.institutionId(),
+        ballot.title(),
+        ballot.candidateIds(),
+        ballot.opensAt(),
+        now.minus(1, ChronoUnit.SECONDS),
+        ballot.allowMultipleSelection()
+    );
+    ballotRepository.save(closed);
+    return closed;
+  }
+
   private boolean ensureInstitution(Institution institution) {
-    return institutionRepository.findById(institution.id())
-        .map(existing -> false)
-        .orElseGet(() -> {
-          institutionRepository.save(institution);
-          return true;
-        });
+    boolean created = institutionRepository.findById(institution.id()).isEmpty();
+    institutionRepository.save(institution);
+    return created;
   }
 
   private boolean ensureCandidate(Candidate candidate) {
-    return candidateRepository.findById(candidate.id())
-        .map(existing -> false)
-        .orElseGet(() -> {
-          candidateRepository.save(candidate);
-          return true;
-        });
+    boolean created = candidateRepository.findById(candidate.id()).isEmpty();
+    candidateRepository.save(candidate);
+    return created;
   }
 
   private boolean ensureBallot(Ballot ballot) {
-    return ballotRepository.findById(ballot.id())
-        .map(existing -> false)
-        .orElseGet(() -> {
-          ballotRepository.save(ballot);
-          return true;
-        });
+    boolean created = ballotRepository.findById(ballot.id()).isEmpty();
+    ballotRepository.save(ballot);
+    return created;
   }
 
   public record SeedSummary(int institutionsCreated, int candidatesCreated, int ballotsCreated) {
