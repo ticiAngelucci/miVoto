@@ -1,128 +1,133 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// Importar librerías de seguridad de OpenZeppelin
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; // Mover import arriba
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
- * @title SoulBoundTokenV2
- * @dev Token no transferible basado en ERC721.
- * @notice El emisor (Minter) debe ser el contrato de votación.
+ * @title MiVotoSoulboundToken
+ * @dev Token ERC-721 no transferible usado como comprobante de voto.
  */
-
-contract SoulBoundTokenV2 is ERC721, Ownable {
+contract MiVotoSoulboundToken is ERC721, Ownable {
     uint256 private _nextTokenId = 1;
     address public minter;
 
-    constructor(address _initialMinter)
-        ERC721("Soulbound Proof of Vote", "SBT-POV")
+    constructor(address initialMinter)
+        ERC721("MiVoto Proof of Vote", "MI-VOTE-SBT")
         Ownable(msg.sender)
     {
-        minter = _initialMinter;
+        require(initialMinter != address(0), "Minter requerido");
+        minter = initialMinter;
     }
 
-    // Works in OZ v4.9.0+ (where `_beforeTokenTransfer` is `virtual`)
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
-        internal
-        virtual
-    {
-        require(from == address(0) || to == address(0), "SBT: Token no transferible.");
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        require(
+            from == address(0) || to == address(0),
+            "SBT: intransferible"
+        );
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function safeMint(address to) public returns (uint256) {
-        require(msg.sender == minter, "SBT: Solo el minter puede emitir tokens.");
-        uint256 newTokenId = _nextTokenId++;
-        _safeMint(to, newTokenId);
-        return newTokenId;
-    }
-
-    function setMinter(address newMinter) public onlyOwner {
-        require(newMinter != address(0), "Minter no puede ser la direccion cero.");
+    function setMinter(address newMinter) external onlyOwner {
+        require(newMinter != address(0), "Minter invalido");
         minter = newMinter;
+    }
+
+    function safeMint(address to) external returns (uint256) {
+        require(msg.sender == minter, "Solo minter");
+        require(to != address(0), "Destinatario invalido");
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        return tokenId;
     }
 }
 
-// ---------------------------------------------------------------------------------
-
 /**
- * @title VotacionConSBTv2
- * @dev Contrato de votación con SBT y protecciones de seguridad.
+ * @title MiVotoElection
+ * @dev Gestiona emisión de tokens de elegibilidad y registro de votos on-chain.
  */
-contract VotacionConSBTv2 is Ownable, ReentrancyGuard {
-    // Utilizamos 'SoulBoundTokenV2'
-    SoulBoundTokenV2 public sbtContract;
-    bool public isSBTVerified = false; // Añadido para la verificación de confianza
-
-    struct Votante {
-        bool haVotado;
-        bool estaAutorizado;
+contract MiVotoElection is Ownable, ReentrancyGuard {
+    struct Eligibility {
+        address voter;
+        bool consumed;
+        uint256 tokenId;
     }
 
-    enum Opcion { SI, NO, ABSTENCION }
+    MiVotoSoulboundToken public immutable sbt;
+    mapping(bytes32 => Eligibility) private eligibilities;
+    mapping(bytes32 => bool) private receipts;
 
-    mapping(address => Votante) public votantes;
-    mapping(Opcion => uint256) public resultados;
+    event TokenIssued(bytes32 indexed tokenHash, address indexed voter);
+    event VoteCast(
+        uint256 indexed ballotId,
+        bytes32 indexed tokenHash,
+        bytes32 voteHash,
+        bytes32 receiptHash,
+        address indexed voter,
+        uint256 tokenId
+    );
 
-    event VotoEmitido(address indexed votante, Opcion voto);
-    event VotanteAutorizado(address indexed votante);
-
-    // CORRECCIÓN 3: Añadir Ownable(msg.sender)
-    constructor(address _sbtAddress)
-        Ownable(msg.sender)
-    {
-        sbtContract = SoulBoundTokenV2(_sbtAddress);
+    constructor(address sbtAddress) Ownable(msg.sender) {
+        require(sbtAddress != address(0), "SBT requerido");
+        sbt = MiVotoSoulboundToken(sbtAddress);
     }
 
-    // Función de inicialización para la verificación de confianza (Opción A)
-    /**
-     * @notice Verifica y finaliza la conexión con el contrato SBT.
-     * @dev Debe llamarse después de que el owner haya configurado el Minter en el SBT.
-     */
-    function finalizeSBTSetup() public onlyOwner {
-        require(!isSBTVerified, "El SBT ya fue verificado.");
-        
-        // Verificar si el Minter del SBT es este contrato.
-        // Si el SBT no tiene la dirección del Minter configurada (Paso 3 del despliegue), esta llamada fallará.
-        require(sbtContract.minter() == address(this), "Este contrato no es el minter del SBT.");
-        
-        isSBTVerified = true;
-    }
-    
-    /**
-     * @notice Autoriza a una dirección a votar.
-     * @param _votante La dirección que será autorizada.
-     */
-    function autorizarVotante(address _votante) public onlyOwner {
-        votantes[_votante].estaAutorizado = true;
-        emit VotanteAutorizado(_votante);
+    function issueToken(bytes32 tokenHash, address voter) external onlyOwner {
+        require(tokenHash != bytes32(0), "Token requerido");
+        require(voter != address(0), "Votante requerido");
+        Eligibility storage info = eligibilities[tokenHash];
+        require(info.voter == address(0), "Token ya emitido");
+
+        eligibilities[tokenHash] = Eligibility({
+            voter: voter,
+            consumed: false,
+            tokenId: 0
+        });
+
+        emit TokenIssued(tokenHash, voter);
     }
 
-    /**
-     * @notice Permite a un votante autorizado emitir su voto y recibir un SBT.
-     * @param _voto La opción de voto (0=SI, 1=NO, 2=ABSTENCION).
-     */
-    function votar(Opcion _voto) public nonReentrant {
-        require(isSBTVerified, "La configuracion del SBT no ha finalizado."); // Requisito de verificación
-        require(uint256(_voto) <= uint256(Opcion.ABSTENCION), "Voto invalido.");
-        
-        require(votantes[msg.sender].estaAutorizado, "Votante no autorizado.");
-        require(!votantes[msg.sender].haVotado, "Ya has emitido tu voto.");
+    function castVote(
+        uint256 ballotId,
+        bytes32 tokenHash,
+        bytes32 voteHash,
+        bytes32 receiptHash
+    ) external onlyOwner nonReentrant returns (uint256) {
+        require(voteHash != bytes32(0), "Hash de voto requerido");
+        require(receiptHash != bytes32(0), "Recibo requerido");
 
-        // Checks-Effects-Interactions 
-        votantes[msg.sender].haVotado = true;
-        resultados[_voto]++;
-        emit VotoEmitido(msg.sender, _voto);
-        
-        sbtContract.safeMint(msg.sender); 
+        Eligibility storage info = eligibilities[tokenHash];
+        require(info.voter != address(0), "Token no emitido");
+        require(!info.consumed, "Token ya utilizado");
+        require(!receipts[receiptHash], "Recibo duplicado");
+
+        info.consumed = true;
+        receipts[receiptHash] = true;
+
+        uint256 tokenId = info.tokenId;
+        if (tokenId == 0) {
+            tokenId = sbt.safeMint(info.voter);
+            info.tokenId = tokenId;
+        }
+
+        emit VoteCast(ballotId, tokenHash, voteHash, receiptHash, info.voter, tokenId);
+        return tokenId;
     }
 
-    /**
-     * @notice Devuelve el total de votos para una opción específica.
-     * @param _opcion La opción a consultar.
-     */
-    function obtenerResultados(Opcion _opcion) public view returns (uint256) {
-        return resultados[_opcion];
+    function voterForToken(bytes32 tokenHash) external view returns (address) {
+        return eligibilities[tokenHash].voter;
+    }
+
+    function tokenConsumed(bytes32 tokenHash) external view returns (bool) {
+        return eligibilities[tokenHash].consumed;
+    }
+
+    function isReceiptRegistered(bytes32 receiptHash) external view returns (bool) {
+        return receipts[receiptHash];
     }
 }

@@ -92,3 +92,39 @@ mvn test
 - El build se valida con `npm run build` dentro de `frontend/miVotoFrontend`.
 - En Firestore, las colecciones utilizadas por el backend llevan nombres en español: `instituciones`, `candidatos`, `boletas`, `votos` y `resultadosBoleta`.
 - Para precargar datos demo habilitá `SEED_ENABLED=true` y ejecutá `POST /seed/default` (crea institución, candidatos y boleta si no existen).
+
+## Automatización de seed y voto
+
+Para acelerar las pruebas manuales del flujo end-to-end agregamos scripts en `scripts/` y un `Makefile` con comandos listos para usar. Todos asumen que el backend está escuchando en `http://localhost:8080` y que el mock de MiArgentina corre en `http://localhost:9999`.
+
+1. `make login` inicia el flujo OAuth contra el mock y guarda la cookie de sesión en `.tmp/cookies/session.jar`. Devuelve los datos del usuario autenticado.
+2. `make seed` ejecuta `POST /seed/default` reutilizando la sesión previa.
+3. `make vote` solicita un token con `POST /eligibility/issue/session` y emite un voto contra la boleta configurada (por defecto `ballotId=1`, `cand-1`).
+4. `make tally` consulta `GET /ballots/{id}/tally` para revisar el recuento.
+5. `make token` obtiene sólo el token de elegibilidad en texto plano, mientras que `make token-json` devuelve el JSON completo.
+6. `make seed-close` fuerza el cierre inmediato de la boleta indicada (por defecto `1`).
+
+Variables útiles que podés sobreescribir al invocar `make`:
+
+- `BASE_URL`, `OAUTH_AUTHORIZE_URL` y `COOKIE_JAR` para apuntar a otros entornos o cambiar la ubicación del archivo de cookies.
+- `BALLOT_ID`, `INSTITUTION_ID` y `CANDIDATE_IDS` para votar sobre otra boleta o lista (por ejemplo `make vote CANDIDATE_IDS=cand-2`).
+- `WALLET_ADDRESS` define la cuenta a la que se emitirá el SBT cuando se registra el voto. Por defecto apunta a la primera cuenta de Hardhat/Anvil (`0xf39f…`).
+
+Si querés descartar la sesión almacenada, corré `make clean-cookies`. Todos los scripts requieren `python3` y `curl`, ambos disponibles por defecto en macOS/Linux.
+
+## Usuarios del mock MiArgentina
+
+El servidor OAuth de prueba (`docker compose` levanta `miargentina-mock`) permite elegir identidades diferentes al iniciar sesión. Al acceder a `http://localhost:9999/` verás la lista de cuentas demo (`ciudadano`, `maria`, `roberto`). Cada vez que se dispara el flujo OAuth se muestra una pantalla para seleccionar el usuario antes de redirigir al backend. El `id_token` generado incluye los datos básicos (sub, nombre, apellido, email) para que el backend distinga a cada ciudadano.
+
+## Integración con blockchain real
+
+1. Desplegá `MiVotoSoulboundToken` y `MiVotoElection` (ver `contracts/MiVoto.sol`). El constructor del SBT recibe la dirección que actuará como minter inicial; luego ejecutá `setMinter(<address del contrato de voto>)`. Podés usar el script de ejemplo `contracts/deploy.sample.js` con Hardhat (`npx hardhat run --network <net> contracts/deploy.sample.js`).
+2. Configurá la app con variables reales:
+   - `WEB3_RPC_URL`, `WEB3_CHAIN_ID`, `WEB3_GAS_PRICE`, `WEB3_GAS_LIMIT` según tu nodo.
+   - `WEB3_PRIVATE_KEY` con la clave del backend que firmará las transacciones.
+   - `VOTE_CONTRACT_ADDR` con la dirección del contrato `MiVotoElection` desplegado.
+   - `WEB3_MOCK_ENABLED=false` para habilitar el envío real de transacciones.
+3. Reiniciá el backend y asegurate de que `SEED_ENABLED=false` en producción para evitar datos demo.
+4. Desde el frontend, cada votante debe cargar una dirección de wallet válida (formato `0x...`) antes de solicitar el token de elegibilidad; ese address será el destinatario del SBT cuando se emita el voto.
+
+Para probar en redes como Sepolia/Amoy podés usar Hardhat/Anvil para desplegar los contratos y luego apuntar la app a ese RPC. La respuesta de `POST /votes/cast` ahora incluye `sbtTokenId` y el frontend muestra el ID acuñado para facilitar la validación con block explorers.

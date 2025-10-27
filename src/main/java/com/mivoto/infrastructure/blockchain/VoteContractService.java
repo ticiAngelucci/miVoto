@@ -7,9 +7,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.retry.annotation.Backoff;
@@ -19,6 +21,7 @@ import org.web3j.abi.EventEncoder;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.FunctionReturnDecoder;
 import org.web3j.abi.TypeReference;
+import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Event;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
@@ -34,15 +37,16 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tx.ChainIdLong;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
+import org.web3j.tx.gas.StaticGasProvider;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.tx.response.TransactionReceiptProcessor;
-import org.web3j.tx.gas.StaticGasProvider;
 import org.web3j.utils.Numeric;
 
 @Service
 public class VoteContractService {
 
   private static final Logger log = LoggerFactory.getLogger(VoteContractService.class);
+
   private static final Event VOTE_CAST_EVENT = new Event(
       "VoteCast",
       Arrays.asList(
@@ -50,9 +54,24 @@ public class VoteContractService {
           new TypeReference<Bytes32>(true) {},
           new TypeReference<Bytes32>() {},
           new TypeReference<Bytes32>() {},
-          new TypeReference<org.web3j.abi.datatypes.Address>(true) {}
+          new TypeReference<Address>(true) {},
+          new TypeReference<Uint256>() {}
       )
   );
+
+  private static final String VOTE_CAST_EVENT_SIGNATURE = EventEncoder.encode(VOTE_CAST_EVENT);
+
+  private static final class TokenState {
+    private final String walletAddress;
+    private boolean consumed;
+    private long sbtTokenId;
+
+    private TokenState(String walletAddress) {
+      this.walletAddress = walletAddress;
+      this.consumed = false;
+      this.sbtTokenId = 0L;
+    }
+  }
 
   private final Web3j web3j;
   private final Web3Properties props;
@@ -60,9 +79,9 @@ public class VoteContractService {
   private final TransactionManager transactionManager;
   private final TransactionReceiptProcessor receiptProcessor;
   private final boolean mockEnabled;
-  private final Set<String> issuedTokens = ConcurrentHashMap.newKeySet();
-  private final Set<String> consumedTokens = ConcurrentHashMap.newKeySet();
-  private final Set<String> voteReceipts = ConcurrentHashMap.newKeySet();
+  private final ConcurrentMap<String, TokenState> tokenStates = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Long> receiptTokenIds = new ConcurrentHashMap<>();
+  private final AtomicLong mockTokenSequence = new AtomicLong(1L);
 
   public VoteContractService(Web3j web3j, Credentials credentials, Web3Properties props) {
     this.web3j = Objects.requireNonNull(web3j);
@@ -85,19 +104,24 @@ public class VoteContractService {
   }
 
   @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 500L, multiplier = 2.0))
-  public CompletableFuture<TransactionReceipt> issueToken(String tokenHashHex) {
+  public CompletableFuture<TransactionReceipt> issueToken(String tokenHashHex, String walletAddress) {
+    String normalizedToken = normalizeHex(tokenHashHex);
+    String normalizedWallet = normalizeAddress(walletAddress);
     if (mockEnabled) {
-      String normalized = normalizeHex(tokenHashHex);
-      if (!issuedTokens.add(normalized)) {
+      TokenState previous = tokenStates.putIfAbsent(normalizedToken, new TokenState(normalizedWallet));
+      if (previous != null) {
         return CompletableFuture.failedFuture(new IllegalStateException("Token hash already issued"));
       }
       TransactionReceipt receipt = new TransactionReceipt();
-      receipt.setTransactionHash("0xmock-token-" + normalized.substring(2, Math.min(normalized.length(), 10)));
+      receipt.setTransactionHash("0xmock-token-" + normalizedToken.substring(2, Math.min(normalizedToken.length(), 10)));
       return CompletableFuture.completedFuture(receipt);
     }
     Function function = new Function(
         "issueToken",
-        Collections.singletonList(toBytes32(tokenHashHex)),
+        Arrays.asList(
+            toBytes32(tokenHashHex),
+            new Address(normalizedWallet)
+        ),
         Collections.emptyList()
     );
     return execute(function);
@@ -105,16 +129,23 @@ public class VoteContractService {
 
   @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 500L, multiplier = 2.0))
   public CompletableFuture<TransactionReceipt> castVote(long ballotId, String tokenHashHex, String voteHashHex, String receiptHex) {
+    String normalizedToken = normalizeHex(tokenHashHex);
+    String normalizedReceipt = normalizeHex(receiptHex);
     if (mockEnabled) {
-      String normalizedToken = normalizeHex(tokenHashHex);
-      String normalizedReceipt = normalizeHex(receiptHex);
-      if (!issuedTokens.contains(normalizedToken)) {
+      TokenState state = tokenStates.get(normalizedToken);
+      if (state == null) {
         return CompletableFuture.failedFuture(new IllegalStateException("Token hash not issued"));
       }
-      if (!consumedTokens.add(normalizedToken)) {
-        return CompletableFuture.failedFuture(new IllegalStateException("Token already used"));
+      synchronized (state) {
+        if (state.consumed) {
+          return CompletableFuture.failedFuture(new IllegalStateException("Token already used"));
+        }
+        state.consumed = true;
+        if (state.sbtTokenId == 0L) {
+          state.sbtTokenId = mockTokenSequence.getAndIncrement();
+        }
+        receiptTokenIds.put(normalizedReceipt, state.sbtTokenId);
       }
-      voteReceipts.add(normalizedReceipt);
       TransactionReceipt receipt = new TransactionReceipt();
       receipt.setTransactionHash("0xmock-vote-" + normalizedReceipt.substring(2, Math.min(normalizedReceipt.length(), 10)));
       return CompletableFuture.completedFuture(receipt);
@@ -135,17 +166,20 @@ public class VoteContractService {
   public boolean isReceiptRegistered(String receiptHex) {
     String normalized = normalizeHex(receiptHex);
     if (mockEnabled) {
-      return voteReceipts.contains(normalized);
+      return receiptTokenIds.containsKey(normalized);
     }
     EthFilter filter = new EthFilter(
         DefaultBlockParameterName.EARLIEST,
         DefaultBlockParameterName.LATEST,
         props.contractAddress()
-    ).addSingleTopic(EventEncoder.encode(VOTE_CAST_EVENT));
+    ).addSingleTopic(VOTE_CAST_EVENT_SIGNATURE);
     try {
       EthLog logResponse = web3j.ethGetLogs(filter).send();
       for (EthLog.LogResult<?> logResult : logResponse.getLogs()) {
         Log logEntry = (Log) logResult.get();
+        if (logEntry.getTopics().isEmpty() || !VOTE_CAST_EVENT_SIGNATURE.equals(logEntry.getTopics().get(0))) {
+          continue;
+        }
         List<Type> decoded = FunctionReturnDecoder.decode(
             logEntry.getData(),
             VOTE_CAST_EVENT.getNonIndexedParameters()
@@ -163,6 +197,42 @@ public class VoteContractService {
       log.warn("Unable to verify receipt {} on-chain", normalized, e);
     }
     return false;
+  }
+
+  public Optional<String> extractSbtTokenId(TransactionReceipt receipt, String receiptHashHex) {
+    if (receipt == null) {
+      return Optional.empty();
+    }
+    String normalizedReceipt = normalizeHex(receiptHashHex);
+    if (mockEnabled) {
+      Long tokenId = receiptTokenIds.get(normalizedReceipt);
+      return tokenId != null ? Optional.of(Long.toString(tokenId)) : Optional.empty();
+    }
+    try {
+      for (Log logEntry : receipt.getLogs()) {
+        List<String> topics = logEntry.getTopics();
+        if (topics.isEmpty() || !VOTE_CAST_EVENT_SIGNATURE.equals(topics.get(0))) {
+          continue;
+        }
+        List<Type> decoded = FunctionReturnDecoder.decode(
+            logEntry.getData(),
+            VOTE_CAST_EVENT.getNonIndexedParameters()
+        );
+        if (decoded.size() < 3) {
+          continue;
+        }
+        Bytes32 receiptValue = (Bytes32) decoded.get(1);
+        String onChainReceipt = normalizeHex(Numeric.toHexString(receiptValue.getValue()));
+        if (!onChainReceipt.equals(normalizedReceipt)) {
+          continue;
+        }
+        Uint256 tokenId = (Uint256) decoded.get(2);
+        return Optional.of(tokenId.getValue().toString());
+      }
+    } catch (Exception e) {
+      log.debug("Failed to decode SBT token id from receipt {}", receipt.getTransactionHash(), e);
+    }
+    return Optional.empty();
   }
 
   private CompletableFuture<TransactionReceipt> execute(Function function) {
@@ -208,6 +278,18 @@ public class VoteContractService {
     if (hexValue == null || hexValue.isBlank()) {
       throw new IllegalArgumentException("Hex value required");
     }
-    return hexValue.startsWith("0x") ? hexValue : "0x" + hexValue;
+    String cleaned = Numeric.cleanHexPrefix(hexValue);
+    return Numeric.prependHexPrefix(cleaned.toLowerCase());
+  }
+
+  private String normalizeAddress(String address) {
+    if (address == null || address.isBlank()) {
+      throw new IllegalArgumentException("Address required");
+    }
+    String cleaned = Numeric.cleanHexPrefix(address);
+    if (cleaned.length() != 40) {
+      throw new IllegalArgumentException("Address must have 20 bytes");
+    }
+    return Numeric.prependHexPrefix(cleaned.toLowerCase());
   }
 }

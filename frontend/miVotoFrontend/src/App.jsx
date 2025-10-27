@@ -32,6 +32,7 @@ function App() {
 
   const [selectedBallotId, setSelectedBallotId] = useState('')
   const [selectedCandidates, setSelectedCandidates] = useState([])
+  const [walletAddress, setWalletAddress] = useState('')
   const [eligibilityToken, setEligibilityToken] = useState('')
   const [eligibilityExpiresAt, setEligibilityExpiresAt] = useState(null)
   const [eligibilityRequestError, setEligibilityRequestError] = useState(null)
@@ -360,6 +361,7 @@ function App() {
     fetchJson('/auth/logout', { method: 'POST' })
       .then(() => {
         setSession(null)
+        setWalletAddress('')
         setEligibilityToken('')
         setEligibilityExpiresAt(null)
         setEligibilityRequestError(null)
@@ -372,10 +374,18 @@ function App() {
       setEligibilityRequestError('Necesitás iniciar sesión para solicitar el token.')
       return
     }
+    const normalizedWallet = walletAddress.trim()
+    if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedWallet)) {
+      setEligibilityRequestError('Ingresá una dirección de wallet válida (0x...)')
+      return
+    }
     setEligibilityRequestLoading(true)
     setEligibilityRequestError(null)
     try {
-      const data = await fetchJson('/eligibility/issue/session', { method: 'POST' })
+      const data = await fetchJson('/eligibility/issue/session', {
+        method: 'POST',
+        body: JSON.stringify({ walletAddress: normalizedWallet })
+      })
       if (data) {
         setEligibilityToken(data.eligibilityToken ?? '')
         setEligibilityExpiresAt(data.expiresAt ?? null)
@@ -651,6 +661,16 @@ function App() {
             {eligibilityRequestError && <p className="error">{eligibilityRequestError}</p>}
 
             <label className="field">
+              <span>Dirección de wallet (Ethereum)</span>
+              <input
+                type="text"
+                value={walletAddress}
+                onChange={(event) => setWalletAddress(event.target.value)}
+                placeholder="0x..."
+              />
+            </label>
+
+            <label className="field">
               <span>Token de elegibilidad</span>
               <input
                 type="text"
@@ -669,6 +689,9 @@ function App() {
                 <p>Voto recibido. Guardá estos datos:</p>
                 <p>Recibo: <code>{voteResult.receipt}</code></p>
                 <p>Tx hash: <code>{voteResult.txHash}</code></p>
+                {voteResult.sbtTokenId && (
+                  <p>SBT token ID: <code>{voteResult.sbtTokenId}</code></p>
+                )}
               </div>
             )}
           </form>

@@ -23,6 +23,7 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
+        .cors(Customizer.withDefaults())
         .csrf(org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.POST, "/auth/miargentina/callback").permitAll()

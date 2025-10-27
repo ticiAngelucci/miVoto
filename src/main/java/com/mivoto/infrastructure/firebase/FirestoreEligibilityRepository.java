@@ -89,6 +89,7 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
         eligibility.issuedAt(),
         eligibility.expiresAt(),
         eligibility.tokenHash(),
+        eligibility.walletAddress(),
         eligibility.status(),
         eligibility.issuedBy()
     );
@@ -116,6 +117,7 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
         "issuedAt", Timestamp.ofTimeSecondsAndNanos(eligibility.issuedAt().getEpochSecond(), eligibility.issuedAt().getNano()),
         "expiresAt", Timestamp.ofTimeSecondsAndNanos(eligibility.expiresAt().getEpochSecond(), eligibility.expiresAt().getNano()),
         "tokenHash", eligibility.tokenHash(),
+        "walletAddress", eligibility.walletAddress(),
         "status", eligibility.status().name(),
         "issuedBy", eligibility.issuedBy()
     );
@@ -126,8 +128,9 @@ public class FirestoreEligibilityRepository implements VoterEligibilityRepositor
     Instant expiresAt = document.getTimestamp("expiresAt").toDate().toInstant();
     String subjectHash = document.getString("subjectHash");
     String tokenHash = document.getString("tokenHash");
+    String walletAddress = document.contains("walletAddress") ? document.getString("walletAddress") : null;
     String issuedBy = document.getString("issuedBy");
     EligibilityStatus status = EligibilityStatus.valueOf(document.getString("status"));
-    return new VoterEligibility(document.getId(), subjectHash, issuedAt, expiresAt, tokenHash, status, issuedBy);
+    return new VoterEligibility(document.getId(), subjectHash, issuedAt, expiresAt, tokenHash, walletAddress, status, issuedBy);
   }
 }

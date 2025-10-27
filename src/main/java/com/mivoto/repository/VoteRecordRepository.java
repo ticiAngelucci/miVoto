@@ -10,5 +10,7 @@ public interface VoteRecordRepository {
 
   Optional<VoteRecord> findByReceipt(String receipt);
 
+  boolean existsByBallotIdAndSubjectHash(String ballotId, String subjectHash);
+
   Map<String, Long> tallyByBallot(String ballotId);
 }

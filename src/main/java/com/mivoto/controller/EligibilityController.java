@@ -2,6 +2,7 @@ package com.mivoto.controller;
 
 import com.mivoto.controller.dto.EligibilityRequest;
 import com.mivoto.controller.dto.EligibilityResponse;
+import com.mivoto.controller.dto.SessionEligibilityRequest;
 import com.mivoto.security.SessionKeys;
 import com.mivoto.service.eligibility.EligibilityService;
 import jakarta.validation.Valid;
@@ -31,6 +32,28 @@ public class EligibilityController {
   )
   public ResponseEntity<EligibilityResponse> issue(@RequestBody @Valid EligibilityRequest request) {
     EligibilityResponse resp = eligibilityService.issueEligibility(request);
+    return buildResponse(resp);
+  }
+
+  @PostMapping(
+      value = "/issue/session",
+      consumes = "application/json",
+      produces = "application/json"
+  )
+  public ResponseEntity<EligibilityResponse> issueFromSession(
+      HttpSession session,
+      @RequestBody @Valid SessionEligibilityRequest request) {
+    Object token = session.getAttribute(SessionKeys.ID_TOKEN);
+    if (!(token instanceof String idToken) || idToken.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión sin token válido");
+    }
+    EligibilityResponse resp = eligibilityService.issueEligibility(
+        new EligibilityRequest(idToken, request.walletAddress())
+    );
+    return buildResponse(resp);
+  }
+
+  private ResponseEntity<EligibilityResponse> buildResponse(EligibilityResponse resp) {
     // Si tu EligibilityResponse expone getId() o id(), arma Location
     try {
       String id = null;
@@ -59,17 +82,5 @@ public class EligibilityController {
       // If reflection invocation fails or other exceptions, devolvemos 201 sin Location
     }
     return ResponseEntity.status(201).body(resp);
-  }
-
-  @PostMapping(
-      value = "/issue/session",
-      produces = "application/json"
-  )
-  public ResponseEntity<EligibilityResponse> issueFromSession(HttpSession session) {
-    Object token = session.getAttribute(SessionKeys.ID_TOKEN);
-    if (!(token instanceof String idToken) || idToken.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión sin token válido");
-    }
-    return issue(new EligibilityRequest(idToken));
   }
 }

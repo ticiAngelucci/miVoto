@@ -20,14 +20,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.Keys;
+import org.web3j.crypto.WalletUtils;
 
 @Service
 public class EligibilityService {
 
-  private static final Logger log = LoggerFactory.getLogger(EligibilityService.class);
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   private final MiArgentinaTokenVerifier tokenVerifier;
@@ -61,6 +60,7 @@ public class EligibilityService {
     } catch (IllegalArgumentException ex) {
       throw new EligibilityException("MiArgentina token invalid", ex);
     }
+    String wallet = normalizeWallet(request.walletAddress());
     String subjectHash = hashingService.hashSubject(user.subject());
     Instant now = Instant.now(clock);
     repository.findActiveBySubjectHash(subjectHash).ifPresent(existing -> {
@@ -84,11 +84,12 @@ public class EligibilityService {
         issuedAt,
         expiresAt,
         tokenHash,
+        wallet,
         EligibilityStatus.ACTIVE,
         "mi-argentina"
     );
     try {
-      voteContractService.issueToken(tokenHash).join();
+      voteContractService.issueToken(tokenHash, wallet).join();
     } catch (Exception e) {
       Throwable cause = e.getCause() != null ? e.getCause() : e;
       throw new EligibilityException("Failed to register eligibility on-chain", cause);
@@ -96,7 +97,8 @@ public class EligibilityService {
     repository.save(eligibility);
     auditService.record("identity-service", "ELIGIBILITY_ISSUED", Map.of(
         "eligibilityId", eligibility.id(),
-        "subjectHash", subjectHash
+        "subjectHash", subjectHash,
+        "walletAddress", wallet
     ));
     return new EligibilityResponse(encodedToken, expiresAt);
   }
@@ -109,4 +111,21 @@ public class EligibilityService {
     return token;
   }
 
+  private String normalizeWallet(String wallet) {
+    if (wallet == null || wallet.isBlank()) {
+      throw new EligibilityException("Wallet address required");
+    }
+    String trimmed = wallet.trim();
+    if (!WalletUtils.isValidAddress(trimmed)) {
+      throw new EligibilityException("Wallet address invalid");
+    }
+    String prefixed = trimmed.startsWith("0x") || trimmed.startsWith("0X")
+        ? trimmed
+        : "0x" + trimmed;
+    try {
+      return Keys.toChecksumAddress(prefixed);
+    } catch (Exception ex) {
+      throw new EligibilityException("Wallet address invalid checksum", ex);
+    }
+  }
 }

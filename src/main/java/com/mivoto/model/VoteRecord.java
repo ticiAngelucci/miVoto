@@ -10,8 +10,10 @@ public record VoteRecord(
     List<String> candidateIds,
     String voteHash,
     String tokenHash,
+    String subjectHash,
     String receipt,
     String txHash,
+    String sbtTokenId,
     Instant createdAt
 ) {
 

@@ -83,6 +83,12 @@ public class VotingService {
     if (eligibility.status() != EligibilityStatus.ACTIVE) {
       throw new VotingException("Eligibility token not active");
     }
+    if (eligibility.walletAddress() == null || eligibility.walletAddress().isBlank()) {
+      throw new VotingException("Eligibility missing wallet address");
+    }
+    if (voteRecordRepository.existsByBallotIdAndSubjectHash(ballot.id(), eligibility.subjectHash())) {
+      throw new VotingException("Subject already voted");
+    }
 
     CastVoteSelection selection = Objects.requireNonNull(request.selection(), "Vote selection required");
     validateInstitution(selection, ballot);
@@ -114,10 +120,15 @@ public class VotingService {
 
     eligibilityRepository.markConsumed(tokenHash);
 
+    String sbtTokenId = voteContractService.extractSbtTokenId(receiptOnChain, receipt)
+        .orElse(null);
+
     auditService.record("voting-service", "VOTE_CAST", Map.of(
         "ballotId", ballot.id(),
         "receipt", receipt,
-        "txHash", receiptOnChain.getTransactionHash()
+        "txHash", receiptOnChain.getTransactionHash(),
+        "walletAddress", eligibility.walletAddress(),
+        "sbtTokenId", sbtTokenId
     ));
 
     VoteRecord completed = new VoteRecord(
@@ -127,13 +138,15 @@ public class VotingService {
         canonicalCandidates,
         voteHash,
         tokenHash,
+        eligibility.subjectHash(),
         receipt,
         receiptOnChain.getTransactionHash(),
+        sbtTokenId,
         now
     );
     voteRecordRepository.save(completed);
 
-    return new CastVoteResponse(receipt, receiptOnChain.getTransactionHash());
+    return new CastVoteResponse(receipt, receiptOnChain.getTransactionHash(), sbtTokenId);
   }
 
   public VerifyReceiptResponse verifyReceipt(String receipt) {

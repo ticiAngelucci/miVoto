@@ -51,8 +51,10 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
         record.candidateIds(),
         record.voteHash(),
         record.tokenHash(),
+        record.subjectHash(),
         record.receipt(),
         record.txHash(),
+        record.sbtTokenId(),
         record.createdAt()
     );
   }
@@ -70,6 +72,21 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
     } catch (Exception e) {
       log.error("Failed to find vote by receipt", e);
       return Optional.empty();
+    }
+  }
+
+  @Override
+  public boolean existsByBallotIdAndSubjectHash(String ballotId, String subjectHash) {
+    try {
+      Query query = collection()
+          .whereEqualTo("ballotId", ballotId)
+          .whereEqualTo("subjectHash", subjectHash)
+          .limit(1);
+      QuerySnapshot snapshot = query.get().get();
+      return !snapshot.isEmpty();
+    } catch (Exception e) {
+      log.error("Failed to check vote existence for subject {}", subjectHash, e);
+      return false;
     }
   }
 
@@ -99,16 +116,20 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
   }
 
   private Map<String, Object> toDocument(VoteRecord record) {
-    return Map.of(
-        "ballotId", record.ballotId(),
-        "institutionId", record.institutionId(),
-        "voteHash", record.voteHash(),
-        "tokenHash", record.tokenHash(),
-        "receipt", record.receipt(),
-        "txHash", record.txHash(),
-        "candidateIds", record.candidateIds(),
-        "createdAt", Timestamp.ofTimeSecondsAndNanos(record.createdAt().getEpochSecond(), record.createdAt().getNano())
-    );
+    Map<String, Object> data = new HashMap<>();
+    data.put("ballotId", record.ballotId());
+    data.put("institutionId", record.institutionId());
+    data.put("voteHash", record.voteHash());
+    data.put("tokenHash", record.tokenHash());
+    data.put("subjectHash", record.subjectHash());
+    data.put("receipt", record.receipt());
+    data.put("txHash", record.txHash());
+    data.put("candidateIds", record.candidateIds());
+    data.put("createdAt", Timestamp.ofTimeSecondsAndNanos(record.createdAt().getEpochSecond(), record.createdAt().getNano()));
+    if (record.sbtTokenId() != null) {
+      data.put("sbtTokenId", record.sbtTokenId());
+    }
+    return data;
   }
 
   private VoteRecord fromDocument(DocumentSnapshot document) {
@@ -125,8 +146,10 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
         candidateIds,
         document.getString("voteHash"),
         document.getString("tokenHash"),
+        document.getString("subjectHash"),
         document.getString("receipt"),
         document.getString("txHash"),
+        document.contains("sbtTokenId") ? document.getString("sbtTokenId") : null,
         createdAt
     );
   }

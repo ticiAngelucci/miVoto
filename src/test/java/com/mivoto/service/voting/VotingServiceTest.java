@@ -112,10 +112,13 @@ class VotingServiceTest {
         Instant.now(clock),
         Instant.now(clock).plusSeconds(600),
         "token-hash",
+        "0xabc000000000000000000000000000000000abcd",
         EligibilityStatus.ACTIVE,
         "mi-arg"
     );
     when(voterEligibilityRepository.findByTokenHash("token-hash")).thenReturn(Optional.of(eligibility));
+    when(voteRecordRepository.existsByBallotIdAndSubjectHash("1", "subject-hash"))
+        .thenReturn(false);
 
     ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
     when(hashingService.hashVotePayload(eq("1"), payloadCaptor.capture())).thenReturn("vote-hash");
@@ -125,6 +128,8 @@ class VotingServiceTest {
     receipt.setTransactionHash("0xtx");
     when(voteContractService.castVote(eq(1L), eq("token-hash"), eq("vote-hash"), eq("receipt-123")))
         .thenReturn(CompletableFuture.completedFuture(receipt));
+    when(voteContractService.extractSbtTokenId(receipt, "receipt-123"))
+        .thenReturn(Optional.of("42"));
 
     doNothing().when(voterEligibilityRepository).markConsumed("token-hash");
     when(candidateRepository.findById("cand-1"))
@@ -144,6 +149,7 @@ class VotingServiceTest {
 
     assertThat(response.receipt()).isEqualTo("receipt-123");
     assertThat(response.txHash()).isEqualTo("0xtx");
+    assertThat(response.sbtTokenId()).isEqualTo("42");
 
     Map<String, Object> payload = payloadCaptor.getValue();
     assertThat(payload).containsEntry("institutionId", "inst-1");
@@ -153,7 +159,10 @@ class VotingServiceTest {
     assertThat(persisted.ballotId()).isEqualTo("1");
     assertThat(persisted.institutionId()).isEqualTo("inst-1");
     assertThat(persisted.candidateIds()).containsExactly("cand-2", "cand-1");
+    assertThat(persisted.subjectHash()).isEqualTo("subject-hash");
+    assertThat(persisted.sbtTokenId()).isEqualTo("42");
     verify(voterEligibilityRepository).markConsumed("token-hash");
+    verify(voteRecordRepository).existsByBallotIdAndSubjectHash("1", "subject-hash");
   }
 
   @Test
@@ -177,10 +186,13 @@ class VotingServiceTest {
         Instant.now(clock),
         Instant.now(clock).plusSeconds(600),
         "token-hash",
+        "0xabc000000000000000000000000000000000abcd",
         EligibilityStatus.ACTIVE,
         "mi-arg"
     );
     when(voterEligibilityRepository.findByTokenHash("token-hash")).thenReturn(Optional.of(eligibility));
+    when(voteRecordRepository.existsByBallotIdAndSubjectHash("1", "subject-hash"))
+        .thenReturn(false);
 
     CastVoteRequest request = new CastVoteRequest(
         "1",
@@ -191,6 +203,47 @@ class VotingServiceTest {
     assertThatThrownBy(() -> votingService.castVote(request))
         .isInstanceOf(VotingException.class)
         .hasMessageContaining("Candidate cand-2 is not part of ballot");
+  }
+
+  @Test
+  void castVoteRejectsDuplicateSubject() {
+    Ballot ballot = new Ballot(
+        "1",
+        "inst-1",
+        "Elección demo",
+        List.of("cand-1"),
+        Instant.now(clock).minusSeconds(60),
+        Instant.now(clock).plusSeconds(3600),
+        false
+    );
+    when(ballotService.requireOpenBallot("1")).thenReturn(ballot);
+    DecodedToken decoded = new DecodedToken("raw-token", new byte[]{1}, Instant.now(clock).plusSeconds(600));
+    when(eligibilityService.decodeToken("elig-token")).thenReturn(decoded);
+    when(hashingService.hashToken(eq("raw-token"), any())).thenReturn("token-hash");
+    VoterEligibility eligibility = new VoterEligibility(
+        UUID.randomUUID().toString(),
+        "subject-hash",
+        Instant.now(clock),
+        Instant.now(clock).plusSeconds(600),
+        "token-hash",
+        "0xabc000000000000000000000000000000000abcd",
+        EligibilityStatus.ACTIVE,
+        "mi-arg"
+    );
+    when(voterEligibilityRepository.findByTokenHash("token-hash")).thenReturn(Optional.of(eligibility));
+    when(voteRecordRepository.existsByBallotIdAndSubjectHash("1", "subject-hash"))
+        .thenReturn(true);
+
+    CastVoteRequest request = new CastVoteRequest(
+        "1",
+        "elig-token",
+        new CastVoteSelection("inst-1", List.of("cand-1"))
+    );
+
+    assertThatThrownBy(() -> votingService.castVote(request))
+        .isInstanceOf(VotingException.class)
+        .hasMessageContaining("already voted");
+    verify(voteRecordRepository, never()).save(any());
   }
 
   @Test

@@ -28,8 +28,10 @@ public class InMemoryVoteRecordRepository implements VoteRecordRepository {
         record.candidateIds() != null ? List.copyOf(record.candidateIds()) : List.of(),
         record.voteHash(),
         record.tokenHash(),
+        record.subjectHash(),
         record.receipt(),
         record.txHash(),
+        record.sbtTokenId(),
         record.createdAt() != null ? record.createdAt() : Instant.now()
     );
     store.put(id, normalized);
@@ -41,6 +43,14 @@ public class InMemoryVoteRecordRepository implements VoteRecordRepository {
     return store.values().stream()
         .filter(record -> record.receipt().equals(receipt))
         .findFirst();
+  }
+
+  @Override
+  public boolean existsByBallotIdAndSubjectHash(String ballotId, String subjectHash) {
+    return store.values().stream()
+        .anyMatch(record -> record.ballotId().equals(ballotId)
+            && record.subjectHash() != null
+            && record.subjectHash().equals(subjectHash));
   }
 
   @Override

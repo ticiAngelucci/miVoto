@@ -42,6 +42,7 @@ public class InMemoryVoterEligibilityRepository implements VoterEligibilityRepos
         eligibility.issuedAt(),
         eligibility.expiresAt(),
         eligibility.tokenHash(),
+        eligibility.walletAddress(),
         eligibility.status(),
         eligibility.issuedBy()
     );
@@ -58,6 +59,7 @@ public class InMemoryVoterEligibilityRepository implements VoterEligibilityRepos
           record.issuedAt(),
           record.expiresAt(),
           record.tokenHash(),
+          record.walletAddress(),
           EligibilityStatus.CONSUMED,
           record.issuedBy()
       );

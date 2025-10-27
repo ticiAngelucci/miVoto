@@ -8,6 +8,7 @@ public record VoterEligibility(
     Instant issuedAt,
     Instant expiresAt,
     String tokenHash,
+    String walletAddress,
     EligibilityStatus status,
     String issuedBy
 ) {
