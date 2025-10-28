@@ -4,3 +4,7 @@ target/
 # Local firebase credentials (keep secrets out of git)
 docker/creds/firebase.json
 docker/creds/*.json
+node_modules
+artifacts/
+cache/
+.tmp/

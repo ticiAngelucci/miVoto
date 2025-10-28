@@ -15,7 +15,7 @@ contract MiVotoSoulboundToken is ERC721, Ownable {
 
     constructor(address initialMinter)
         ERC721("MiVoto Proof of Vote", "MI-VOTE-SBT")
-        Ownable(msg.sender)
+        Ownable()
     {
         require(initialMinter != address(0), "Minter requerido");
         minter = initialMinter;
@@ -24,13 +24,14 @@ contract MiVotoSoulboundToken is ERC721, Ownable {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 batchSize
     ) internal virtual override {
         require(
             from == address(0) || to == address(0),
             "SBT: intransferible"
         );
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
     function setMinter(address newMinter) external onlyOwner {
@@ -72,7 +73,7 @@ contract MiVotoElection is Ownable, ReentrancyGuard {
         uint256 tokenId
     );
 
-    constructor(address sbtAddress) Ownable(msg.sender) {
+    constructor(address sbtAddress) Ownable() {
         require(sbtAddress != address(0), "SBT requerido");
         sbt = MiVotoSoulboundToken(sbtAddress);
     }

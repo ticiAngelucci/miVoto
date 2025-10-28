@@ -9,6 +9,7 @@ const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || INTERNAL_BASE_URL
 const CLIENT_ID = process.env.CLIENT_ID || 'stub-client'
 const CLIENT_SECRET = process.env.CLIENT_SECRET || 'stub-secret'
 const DEFAULT_REDIRECT_URI = process.env.DEFAULT_REDIRECT_URI || 'http://localhost:8080/auth/miargentina/callback'
+const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || 'http://localhost:8080'
 
 const USERS = {
   ciudadano: {
@@ -28,6 +29,84 @@ const USERS = {
     given_name: 'Roberto',
     family_name: 'Sosa',
     email: 'roberto@example.com'
+  },
+  lucia: {
+    sub: 'lucia-paredes',
+    given_name: 'Lucía',
+    family_name: 'Paredes',
+    email: 'lucia@example.com'
+  },
+  diego: {
+    sub: 'diego-flores',
+    given_name: 'Diego',
+    family_name: 'Flores',
+    email: 'diego@example.com'
+  },
+  juan: {
+    sub: 'juan-ibarra',
+    given_name: 'Juan',
+    family_name: 'Ibarra',
+    email: 'juan@example.com'
+  },
+  carla: {
+    sub: 'carla-martinez',
+    given_name: 'Carla',
+    family_name: 'Martínez',
+    email: 'carla@example.com'
+  },
+  federico: {
+    sub: 'federico-paz',
+    given_name: 'Federico',
+    family_name: 'Paz',
+    email: 'federico@example.com'
+  },
+  valentina: {
+    sub: 'valentina-rios',
+    given_name: 'Valentina',
+    family_name: 'Ríos',
+    email: 'valentina@example.com'
+  },
+  martin: {
+    sub: 'martin-acosta',
+    given_name: 'Martín',
+    family_name: 'Acosta',
+    email: 'martin@example.com'
+  },
+  sofia: {
+    sub: 'sofia-penna',
+    given_name: 'Sofía',
+    family_name: 'Penna',
+    email: 'sofia@example.com'
+  },
+  nicolas: {
+    sub: 'nicolas-ferri',
+    given_name: 'Nicolás',
+    family_name: 'Ferri',
+    email: 'nicolas@example.com'
+  },
+  ana: {
+    sub: 'ana-salazar',
+    given_name: 'Ana',
+    family_name: 'Salazar',
+    email: 'ana@example.com'
+  },
+  gonzalo: {
+    sub: 'gonzalo-roldan',
+    given_name: 'Gonzalo',
+    family_name: 'Roldán',
+    email: 'gonzalo@example.com'
+  },
+  laura: {
+    sub: 'laura-carrizo',
+    given_name: 'Laura',
+    family_name: 'Carrizo',
+    email: 'laura@example.com'
+  },
+  pablo: {
+    sub: 'pablo-lagos',
+    given_name: 'Pablo',
+    family_name: 'Lagos',
+    email: 'pablo@example.com'
   }
 }
 
@@ -40,7 +119,26 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 
-const renderAuthorizeSelection = (query) => {
+const fetchVoteStatuses = async (subjects) => {
+  if (!subjects.length) {
+    return new Map()
+  }
+  try {
+    const url = new URL('/internal/vote-status', BACKEND_BASE_URL)
+    subjects.forEach((subject) => url.searchParams.append('subjects', subject))
+    const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+    if (!response.ok) {
+      throw new Error(`status ${response.status}`)
+    }
+    const payload = await response.json()
+    return new Map(payload.map((entry) => [entry.subject, Boolean(entry.hasVoted)]))
+  } catch (err) {
+    console.warn('[miargentina-mock] vote status lookup failed:', err.message)
+    return new Map()
+  }
+}
+
+const renderAuthorizeSelection = (query, statusMap) => {
   const hiddenInputs = Object.entries(query)
     .filter(([key]) => key !== 'user')
     .map(([key, value]) => {
@@ -52,11 +150,18 @@ const renderAuthorizeSelection = (query) => {
     .join('\n')
 
   const buttons = Object.entries(USERS)
-    .map(([key, user]) => `
+    .map(([key, user]) => {
+      const voted = statusMap.get(user.sub) === true
+      const statusLabel = voted
+        ? '<span class="status status--voted">Ya votó</span>'
+        : '<span class="status status--pending">Disponible</span>'
+      return `
         <button type="submit" name="user" value="${escapeHtml(key)}">
-          Iniciar sesión como ${escapeHtml(user.given_name)} ${escapeHtml(user.family_name)} (${escapeHtml(user.email)})
+          <span class="user-label">${escapeHtml(user.given_name)} ${escapeHtml(user.family_name)} (${escapeHtml(user.email)})</span>
+          ${statusLabel}
         </button>
-      `)
+      `
+    })
     .join('<br/>')
 
   return `<!DOCTYPE html>
@@ -66,8 +171,13 @@ const renderAuthorizeSelection = (query) => {
     <title>Elegir identidad - Mock MiArgentina</title>
     <style>
       body { font-family: sans-serif; margin: 2rem; }
-      form { display: flex; flex-direction: column; gap: 0.5rem; max-width: 520px; }
-      button { padding: 0.6rem 1rem; font-size: 1rem; cursor: pointer; }
+      form { display: flex; flex-direction: column; gap: 0.5rem; max-width: 560px; }
+      button { padding: 0.75rem 1rem; font-size: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d1d5db; border-radius: 6px; text-align: left; background: #ffffff; }
+      button:hover { border-color: #2563eb; }
+      .user-label { display: block; font-weight: 600; }
+      .status { font-size: 0.85rem; padding: 0.2rem 0.5rem; border-radius: 999px; }
+      .status--voted { background: #fee2e2; color: #991b1b; }
+      .status--pending { background: #dcfce7; color: #166534; }
     </style>
   </head>
   <body>
@@ -111,9 +221,15 @@ const jwks = {
   ]
 }
 
-app.get('/', (_req, res) => {
+app.get('/', async (_req, res) => {
+  const subjects = Object.values(USERS).map((user) => user.sub)
+  const statusMap = await fetchVoteStatuses(subjects)
   const accountsList = Object.entries(USERS)
-    .map(([key, user]) => `<li><strong>${escapeHtml(user.given_name)} ${escapeHtml(user.family_name)}</strong> — ${escapeHtml(user.email)} (<code>${escapeHtml(key)}</code>)</li>`)
+    .map(([key, user]) => {
+      const voted = statusMap.get(user.sub) === true
+      const badge = voted ? ' <strong>(ya votó)</strong>' : ''
+      return `<li><strong>${escapeHtml(user.given_name)} ${escapeHtml(user.family_name)}</strong> — ${escapeHtml(user.email)} (<code>${escapeHtml(key)}</code>)${badge}</li>`
+    })
     .join('\n')
 
   res.send(`<!DOCTYPE html>
@@ -151,7 +267,7 @@ app.get('/.well-known/jwks.json', (_req, res) => {
   res.json(jwks)
 })
 
-app.get('/oauth/authorize', (req, res) => {
+app.get('/oauth/authorize', async (req, res) => {
   const { response_type, client_id, redirect_uri, state } = req.query
   if (response_type !== 'code') {
     return res.status(400).json({ error: 'unsupported_response_type' })
@@ -164,7 +280,9 @@ app.get('/oauth/authorize', (req, res) => {
   const userKey = Array.isArray(userKeyRaw) ? userKeyRaw[0] : userKeyRaw
   const selectedUser = userKey ? USERS[userKey] : undefined
   if (!selectedUser) {
-    return res.send(renderAuthorizeSelection(req.query))
+    const subjects = Object.values(USERS).map((user) => user.sub)
+    const statusMap = await fetchVoteStatuses(subjects)
+    return res.send(renderAuthorizeSelection(req.query, statusMap))
   }
 
   const targetRedirect = redirect_uri || DEFAULT_REDIRECT_URI

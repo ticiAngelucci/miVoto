@@ -1,0 +1,29 @@
+{
+  "name": "mivoto",
+  "version": "1.0.0",
+  "description": "- Docker 20.10+ y Docker Compose Plugin. - (Opcional) Node.js 20+ y Maven 3.9+ para ejecutar sin contenedores. - Nodo EVM opcional (Hardhat/Anvil) si querés probar contra una red real; por defecto usamos clientes mock en memoria.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ticiAngelucci/miVoto.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ticiAngelucci/miVoto/issues"
+  },
+  "homepage": "https://github.com/ticiAngelucci/miVoto#readme",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.19.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.6"
+  }
+}

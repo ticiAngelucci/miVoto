@@ -114,7 +114,7 @@ Si querés descartar la sesión almacenada, corré `make clean-cookies`. Todos l
 
 ## Usuarios del mock MiArgentina
 
-El servidor OAuth de prueba (`docker compose` levanta `miargentina-mock`) permite elegir identidades diferentes al iniciar sesión. Al acceder a `http://localhost:9999/` verás la lista de cuentas demo (`ciudadano`, `maria`, `roberto`). Cada vez que se dispara el flujo OAuth se muestra una pantalla para seleccionar el usuario antes de redirigir al backend. El `id_token` generado incluye los datos básicos (sub, nombre, apellido, email) para que el backend distinga a cada ciudadano.
+El servidor OAuth de prueba (`docker compose` levanta `miargentina-mock`) permite elegir identidades diferentes al iniciar sesión. Al acceder a `http://localhost:9999/` verás la lista de cuentas demo (`ciudadano`, `maria`, `roberto`, `lucia`, `diego`, `juan`, `carla`, `federico`, `valentina`, `martin`, `sofia`, `nicolas`, `ana`, `gonzalo`, `laura`, `pablo`). La pantalla de selección marca cuáles ya emitieron un voto (consulta `GET /internal/vote-status`). El `id_token` generado incluye los datos básicos (sub, nombre, apellido, email) para que el backend distinga a cada ciudadano.
 
 ## Integración con blockchain real
 

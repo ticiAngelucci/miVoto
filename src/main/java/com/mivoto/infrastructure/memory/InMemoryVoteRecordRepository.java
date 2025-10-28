@@ -62,4 +62,10 @@ public class InMemoryVoteRecordRepository implements VoteRecordRepository {
             counts.merge(candidateId, 1L, Long::sum)));
     return counts;
   }
+
+  @Override
+  public boolean existsBySubjectHash(String subjectHash) {
+    return store.values().stream()
+        .anyMatch(record -> record.subjectHash() != null && record.subjectHash().equals(subjectHash));
+  }
 }

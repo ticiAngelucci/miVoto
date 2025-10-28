@@ -111,6 +111,20 @@ public class FirestoreVoteRecordRepository implements VoteRecordRepository {
     }
   }
 
+  @Override
+  public boolean existsBySubjectHash(String subjectHash) {
+    try {
+      Query query = collection()
+          .whereEqualTo("subjectHash", subjectHash)
+          .limit(1);
+      QuerySnapshot snapshot = query.get().get();
+      return !snapshot.isEmpty();
+    } catch (Exception e) {
+      log.error("Failed to check vote existence for subject {}", subjectHash, e);
+      return false;
+    }
+  }
+
   private CollectionReference collection() {
     return firestore.collection(COLLECTION);
   }

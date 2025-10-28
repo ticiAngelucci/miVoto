@@ -11,6 +11,7 @@ services:
       CLIENT_ID: stub-client
       CLIENT_SECRET: stub-secret
       DEFAULT_REDIRECT_URI: http://localhost:8080/auth/miargentina/callback
+      BACKEND_BASE_URL: http://backend:8080
     ports:
       - "9999:9999"
     networks:

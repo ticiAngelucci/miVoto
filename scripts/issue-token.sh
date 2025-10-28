@@ -39,16 +39,15 @@ PY
 response=$(http_request POST "/eligibility/issue/session" "$payload")
 
 if $token_only; then
-  printf '%s\n' "$response" | python3 - <<'PY'
-import json
-import sys
-
-payload = json.load(sys.stdin)
+  printf '%s\n' "$response" | python3 -c 'import json,sys
+raw = sys.stdin.read().strip()
+if not raw:
+    raise SystemExit("empty response from eligibility endpoint")
+payload = json.loads(raw)
 token = payload.get("eligibilityToken")
 if not token:
-  raise SystemExit("eligibilityToken missing in response")
-print(token)
-PY
+    raise SystemExit("eligibilityToken missing in response")
+print(token)'
 else
   printf '%s\n' "$response" | python3 -m json.tool
 fi

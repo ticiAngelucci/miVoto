@@ -29,6 +29,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/auth/miargentina/callback").permitAll()
             .requestMatchers(HttpMethod.GET, "/auth/miargentina/callback").permitAll()
             .requestMatchers(HttpMethod.GET, "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/internal/vote-status/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/votes/*/verify", "/ballots/*/tally").permitAll()
             .requestMatchers(HttpMethod.POST, "/eligibility/issue").authenticated()
             .requestMatchers(HttpMethod.POST, "/eligibility/issue/session").authenticated()

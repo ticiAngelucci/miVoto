@@ -10,15 +10,15 @@ async function main() {
 
   const SBT = await ethers.getContractFactory('MiVotoSoulboundToken')
   const sbt = await SBT.deploy(deployer.address)
-  await sbt.waitForDeployment()
-  console.log('MiVotoSoulboundToken:', sbt.target)
+  await sbt.deployed()
+  console.log('MiVotoSoulboundToken:', sbt.address)
 
   const Election = await ethers.getContractFactory('MiVotoElection')
-  const election = await Election.deploy(sbt.target)
-  await election.waitForDeployment()
-  console.log('MiVotoElection:', election.target)
+  const election = await Election.deploy(sbt.address)
+  await election.deployed()
+  console.log('MiVotoElection:', election.address)
 
-  const tx = await sbt.setMinter(election.target)
+  const tx = await sbt.setMinter(election.address)
   await tx.wait()
   console.log('SBT minter configurado')
 }

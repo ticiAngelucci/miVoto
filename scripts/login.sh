@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/common.sh"
 : "${CLIENT_ID:=stub-client}"
 : "${CLIENT_SCOPE:=openid+profile}"
 : "${REDIRECT_URI:=${BASE_URL}/auth/miargentina/callback}"
+: "${LOGIN_USER:=ciudadano}"
 
 ENCODED_REDIRECT=$(python3 - "$REDIRECT_URI" <<'PY'
 import sys
@@ -15,7 +16,7 @@ print(urllib.parse.quote(sys.argv[1], safe=''))
 PY
 )
 
-authorize_url="${OAUTH_AUTHORIZE_URL}?response_type=code&client_id=${CLIENT_ID}&scope=${CLIENT_SCOPE}&redirect_uri=${ENCODED_REDIRECT}"
+authorize_url="${OAUTH_AUTHORIZE_URL}?response_type=code&client_id=${CLIENT_ID}&scope=${CLIENT_SCOPE}&redirect_uri=${ENCODED_REDIRECT}&user=${LOGIN_USER}"
 
 tmp=$(mktemp)
 status=$("$CURL_BIN" \
@@ -39,4 +40,3 @@ rm -f "$tmp"
 printf 'Session cookie stored at %s\n' "$COOKIE_JAR"
 
 http_request GET "/auth/session"
-
