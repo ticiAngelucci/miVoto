@@ -1,34 +1,101 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import MiVotoLogo from './components/MiVotoLogo'
+import { findUserByName, isValidName } from './services/userService'
 import './App.css'
 
+const FEEDBACK_MESSAGES = {
+  empty: 'Ingresá tu nombre para continuar.',
+  notFound:
+    'No encontramos un votante con ese nombre. Verificá los datos e intentá nuevamente.',
+  error: 'Ocurrió un problema al validar tu nombre. Intentá otra vez en unos minutos.',
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [feedback, setFeedback] = useState({ type: '', message: '' })
+
+  const resetFeedback = () => setFeedback({ type: '', message: '' })
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    resetFeedback()
+
+    if (!isValidName(name)) {
+      setFeedback({ type: 'error', message: FEEDBACK_MESSAGES.empty })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const user = await findUserByName(name)
+
+      if (!user) {
+        setFeedback({ type: 'error', message: FEEDBACK_MESSAGES.notFound })
+        return
+      }
+
+      setFeedback({
+        type: 'success',
+        message: `¡Hola ${user.name}! Ya podés continuar con tu voto.`,
+      })
+    } catch (error) {
+      console.error(error)
+      setFeedback({ type: 'error', message: FEEDBACK_MESSAGES.error })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="login-page">
+      <div className="background-gradients">
+        <div className="gradient gradient--one" />
+        <div className="gradient gradient--two" />
+        <div className="gradient gradient--three" />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+
+      <main className="login-card">
+        <MiVotoLogo className="login-card__logo" />
+
+        <form className="login-form" onSubmit={handleSubmit}>
+          <label className="login-form__label" htmlFor="voterName">
+            Ingresá tu nombre completo
+          </label>
+          <input
+            id="voterName"
+            name="voterName"
+            type="text"
+            placeholder="Ej: Juan Pérez"
+            autoComplete="name"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value)
+              if (feedback.type) {
+                resetFeedback()
+              }
+            }}
+            disabled={loading}
+            className="login-form__input"
+          />
+
+          <button type="submit" className="login-form__button" disabled={loading}>
+            {loading ? 'Verificando…' : 'Ingresar para votar'}
+          </button>
+        </form>
+
+        {feedback.message && (
+          <p className={`login-feedback login-feedback--${feedback.type}`}>
+            {feedback.message}
+          </p>
+        )}
+
+        <a className="login-tutorial" href="#tutorial">
+          ¿No sabés cómo votar? Ver tutorial
+        </a>
+      </main>
+    </div>
   )
 }
 
