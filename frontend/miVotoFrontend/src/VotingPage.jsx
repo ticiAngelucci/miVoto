@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Container,
   Typography,
@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Link,
 } from '@mui/material'
 import WarningIcon from '@mui/icons-material/Warning'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -40,7 +41,7 @@ const FooterLogo = () => (
         borderBottomLeftRadius: 200,
         borderBottomRightRadius: 200,
         background:
-          'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.2) 0%, rgba(0,35,102,0.75) 30%, rgba(0,35,102,0.95) 100%)',
+          'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.22) 0%, rgba(0,35,102,0.78) 35%, rgba(0,35,102,0.95) 100%)',
         boxShadow: '0 26px 60px rgba(4, 20, 62, 0.45)',
         display: 'flex',
         alignItems: 'center',
@@ -68,7 +69,7 @@ const FooterLogo = () => (
   </Box>
 )
 
-const useBackground = () =>
+const useBackgroundLayers = () =>
   useMemo(
     () => (
       <>
@@ -90,8 +91,11 @@ function VotingPage({ username }) {
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [voted, setVoted] = useState(false)
+  const [openSuccessDialog, setOpenSuccessDialog] = useState(false)
+  const [voteHash, setVoteHash] = useState(null)
+  const [sbtHash, setSbtHash] = useState(null)
 
-  const backgroundLayers = useBackground()
+  const backgroundLayers = useBackgroundLayers()
 
   useEffect(() => {
     const fetchCandidates = async () => {
@@ -99,8 +103,8 @@ function VotingPage({ username }) {
         const data = await getCandidates()
         setCandidates(data)
       } catch (err) {
-        setError('Error al cargar los candidatos. Intentá nuevamente en unos minutos.')
         console.error('Error fetching candidates:', err)
+        setError('Error al cargar los candidatos. Volvé a intentar en unos minutos.')
       } finally {
         setLoading(false)
       }
@@ -121,26 +125,30 @@ function VotingPage({ username }) {
     setSelectedCandidate(null)
   }
 
+  const handleCloseSuccessDialog = () => {
+    setOpenSuccessDialog(false)
+  }
+
   const handleConfirmVote = async () => {
     if (!selectedCandidate) {
       return
     }
 
     try {
-      await submitVote(username, selectedCandidate.id)
+      const response = await submitVote(username, selectedCandidate.id)
+      setVoteHash(response.voteTxHash)
+      setSbtHash(response.sbtTxHash)
       setVoted(true)
       handleCloseConfirmDialog()
-      alert(
-        `¡Gracias ${username}, tu voto por ${selectedCandidate.name} quedó registrado!`
-      )
+      setOpenSuccessDialog(true)
     } catch (err) {
       console.error('Error submitting vote:', err)
-      alert('Hubo un error al registrar tu voto. Intentá otra vez.')
+      alert('Hubo un problema al registrar tu voto. Intentá nuevamente.')
       handleCloseConfirmDialog()
     }
   }
 
-  const renderContent = (content) => (
+  const renderWithBackground = (content) => (
     <div className="app-background">
       {backgroundLayers}
       {content}
@@ -148,7 +156,7 @@ function VotingPage({ username }) {
   )
 
   if (loading) {
-    return renderContent(
+    return renderWithBackground(
       <Box sx={{ mt: 10, textAlign: 'center', color: '#ffffff' }}>
         <Typography variant="h5">Cargando candidatos…</Typography>
       </Box>
@@ -156,14 +164,14 @@ function VotingPage({ username }) {
   }
 
   if (error) {
-    return renderContent(
+    return renderWithBackground(
       <Box sx={{ mt: 10, textAlign: 'center', color: '#ffe0e0' }}>
         <Typography variant="h6">{error}</Typography>
       </Box>
     )
   }
 
-  return renderContent(
+  return renderWithBackground(
     <>
       <Container
         component="main"
@@ -215,9 +223,7 @@ function VotingPage({ username }) {
               }}
             >
               <CheckCircleIcon sx={{ fontSize: 42, mb: 1 }} />
-              <Typography variant="h6">
-                ¡Tu voto fue registrado exitosamente!
-              </Typography>
+              <Typography variant="h6">¡Tu voto fue registrado exitosamente!</Typography>
               <Typography variant="body1" sx={{ opacity: 0.9 }}>
                 Gracias por participar, {username}.
               </Typography>
@@ -361,6 +367,92 @@ function VotingPage({ username }) {
             disabled={voted}
           >
             Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openSuccessDialog}
+        onClose={handleCloseSuccessDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle
+          id="success-dialog-title"
+          sx={{
+            textAlign: 'center',
+            p: 3,
+            bgcolor: 'success.light',
+            color: 'success.dark',
+          }}
+        >
+          <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
+          <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+            ¡Voto registrado!
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1">
+            Gracias, {username}. Tu voto quedó emitido con éxito.
+          </Typography>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Generamos la constancia de participación (SBT).
+          </Typography>
+          <Box
+            sx={{
+              mt: 3,
+              p: 2,
+              bgcolor: '#f5f5f5',
+              borderRadius: 1,
+              overflowWrap: 'break-word',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              Hash de transacción (voto):
+            </Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+              {voteHash}
+            </Typography>
+            <Link
+              href="#"
+              onClick={(event) => event.preventDefault()}
+              sx={{ display: 'inline-block', mt: 1, fontSize: '0.9rem' }}
+            >
+              Ver en el explorador
+            </Link>
+          </Box>
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              bgcolor: '#f5f5f5',
+              borderRadius: 1,
+              overflowWrap: 'break-word',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              Hash de SBT:
+            </Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+              {sbtHash}
+            </Typography>
+            <Link
+              href="#"
+              onClick={(event) => event.preventDefault()}
+              sx={{ display: 'inline-block', mt: 1, fontSize: '0.9rem' }}
+            >
+              Ver constancia en el explorador
+            </Link>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center' }}>
+          <Button
+            onClick={handleCloseSuccessDialog}
+            variant="contained"
+            color="primary"
+            size="large"
+          >
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

@@ -55,7 +55,11 @@ export const submitVote = (username, candidateId) => {
   console.log(`(API Mock) ${username} votó por ${candidateId}`)
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ success: true, transactionHash: '0x-fake-blockchain-hash' })
+      resolve({
+        success: true,
+        voteTxHash: `0x-fake-vote-hash-${Math.random().toString(16).slice(2)}`,
+        sbtTxHash: `0x-fake-sbt-constancia-${Math.random().toString(16).slice(2)}`,
+      })
     }, 1000)
   })
 }
