@@ -1,0 +1,8 @@
+target
+.secrets
+secrets
+.git
+.vscode
+.idea
+*.iml
+frontend

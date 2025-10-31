@@ -1,1 +1,15 @@
+version: "3.9"
+
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mivoto-backend:dev
+    environment:
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/service-account.json
+    volumes:
+      - ./secrets/service-account.json:/secrets/service-account.json:ro
+    ports:
+      - "8080:8080"
