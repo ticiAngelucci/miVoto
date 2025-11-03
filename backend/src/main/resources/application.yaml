@@ -10,5 +10,7 @@ blockchain:
 
 logging:
   level:
+    root: DEBUG
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
+
     

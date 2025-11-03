@@ -1,15 +1,21 @@
 package com.example.mivoto.model;
 
-// Importante: Necesitas esta anotación para que Firestore mapee el ID del documento
 import com.google.cloud.firestore.annotation.DocumentId;
+import lombok.Data; // Importa las anotaciones de Lombok
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
-// Usamos un 'record' de Java. Es una clase de datos simple.
-public record Institution(
-    @DocumentId String id, // Esto capturará el ID automático (ej. 5TtpcI8...)
-    String name,
-    String description,
-    boolean active,
-    int membersCount
-) {
-    // ¡No necesitas nada más! Ni constructores, ni getters/setters.
+// Lombok generará automáticamente: Getters, Setters, toString, hashCode y equals
+@Data
+// Los constructores son necesarios para que Firestore y Jackson puedan crear el objeto
+@NoArgsConstructor
+@AllArgsConstructor
+public class Institution {
+
+    @DocumentId
+    private String id;
+    private String name;
+    private String description;
+    private boolean active;
+    private int membersCount;
 }

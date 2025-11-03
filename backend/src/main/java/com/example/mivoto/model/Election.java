@@ -1,16 +1,25 @@
 package com.example.mivoto.model;
 
 import com.google.cloud.firestore.annotation.DocumentId;
-import java.util.List; // Importamos List para el campo 'candidates'
+import lombok.Data; 
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
-// Modelo que representa tu colección "elections"
-public record Election(
-    @DocumentId String id,
-    String name,
-    String status,
-    String institutionId,
-    String voteRule,
-    String startAt,       // Lo dejamos como String por ahora, tal como está en tu DB
-    String endAt,         // Ídem
-    List<String> candidates // Firestore puede mapear arrays de JSON a Listas de Java
-) {}
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Election {
+
+    @DocumentId
+    private String id;
+    private String name;
+    private String status;
+    private String institutionId;
+    private String voteRule;
+    private String startAt;
+    private String endAt;
+    private List<String> candidates;
+}
+

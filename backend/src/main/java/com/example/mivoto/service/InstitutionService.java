@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 @Service // Le dice a Spring que esta es una clase de Servicio
 public class InstitutionService {
 
-    private final Firestore db;
+    private Firestore db;
 
     // Spring inyectará automáticamente el bean de Firestore que ya creaste
     public InstitutionService(Firestore db) {

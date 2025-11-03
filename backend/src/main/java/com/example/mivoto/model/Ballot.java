@@ -1,12 +1,21 @@
 package com.example.mivoto.model;
 
 import com.google.cloud.firestore.annotation.DocumentId;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import java.time.Instant;
 
-public record Ballot(
-    @DocumentId String id,
-    String userId,
-    String electionId,
-    String status,
-    Instant votedAt // Para saber cuándo votó
-) {}
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Ballot {
+
+    @DocumentId
+    private String id;
+    private String userId;
+    private String electionId;
+    private String status;
+    private Instant votedAt;
+}
+

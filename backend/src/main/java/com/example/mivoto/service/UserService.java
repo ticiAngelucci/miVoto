@@ -12,7 +12,7 @@ public class UserService {
 
     private final Firestore db;
     // --- 1. INYECTAMOS EL SERVICIO DE BLOCKCHAIN ---
-    private final BlockchainService blockchainService;
+    private BlockchainService blockchainService;
 
     public UserService(Firestore db, BlockchainService blockchainService) {
         this.db = db;
@@ -36,19 +36,19 @@ public class UserService {
         User user = query.getDocuments().get(0).toObject(User.class);
 
         // 4. LÓGICA DE WALLET: Verificamos si la wallet está vacía
-        if (user.walletAddress() == null || user.walletAddress().isEmpty()) {
-            System.out.println("Usuario " + user.displayName() + " no tiene wallet. Asignando una...");
+        if (user.getWalletAddress() == null || user.getWalletAddress().isEmpty()) {
+            System.out.println("Usuario " + user.getDisplayName() + " no tiene wallet. Asignando una...");
             
             // 5. Llamamos al servicio de blockchain para crear una
-            String newWalletAddress = blockchainService.createWalletForUser(user.id());
+            String newWalletAddress = blockchainService.createWalletForUser(user.getId());
 
             // 6. Actualizamos el documento del usuario en Firestore
-            db.collection("users").document(user.id())
+            db.collection("users").document(user.getId())
               .update("walletAddress", newWalletAddress)
               .get(); // .get() espera a que la operación termine
 
             // 7. Devolvemos el usuario ACTUALIZADO con la nueva wallet
-            return Optional.of(new User(user.id(), user.displayName(), user.email(), newWalletAddress));
+            return Optional.of(new User(user.getId(), user.getDisplayName(), user.getEmail(), newWalletAddress));
         }
 
         // Si ya tenía wallet, solo devolvemos el usuario tal cual
