@@ -17,5 +17,15 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Métodos permitidos
                 .allowedHeaders("*")
                 .allowCredentials(true);
+
+        registry.addMapping("/v3/api-docs/**")
+                .allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080")
+                .allowedMethods("GET")
+                .allowedHeaders("*");
+                
+        registry.addMapping("/swagger-ui/**")
+                .allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080")
+                .allowedMethods("GET")
+                .allowedHeaders("*");
     }
 }
