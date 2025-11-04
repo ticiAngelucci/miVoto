@@ -10,5 +10,10 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
+COPY src/main/resources/firebase-key.json /app/firebase-key.json 
+# El puerto 8080 es el puerto interno del contenedor.
 EXPOSE 8080
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+
+# ENTRYPOINT que asegura que la app lea el puerto de la variable de entorno PORT 
+# proporcionada por Render, y lo asigne a la propiedad 'server.port' de Spring Boot.
+ENTRYPOINT ["sh","-c","java -Dserver.port=$PORT -jar /app/app.jar"]
