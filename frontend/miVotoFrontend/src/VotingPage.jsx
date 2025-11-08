@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Container,
   Typography,
@@ -14,77 +14,17 @@ import {
   DialogActions,
   Button,
   Link,
+  Chip,
 } from '@mui/material'
 import WarningIcon from '@mui/icons-material/Warning'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import { getCandidates, submitVote } from './api'
-import logoImage from './assets/voto.jpg'
+import AppBackground from './components/AppBackground'
+import PageLogo from './components/PageLogo'
 import './App.css'
 
-const FooterLogo = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      mt: 6,
-      mb: { xs: 0, md: 2 },
-      color: '#ffffff',
-    }}
-  >
-    <Box
-      sx={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: 340,
-        aspectRatio: '2 / 1',
-        borderBottomLeftRadius: 200,
-        borderBottomRightRadius: 200,
-        background:
-          'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.22) 0%, rgba(0,35,102,0.78) 35%, rgba(0,35,102,0.95) 100%)',
-        boxShadow: '0 26px 60px rgba(4, 20, 62, 0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-      }}
-    >
-      <Avatar
-        sx={{ width: 70, height: 70, bgcolor: 'transparent' }}
-        variant="circular"
-      >
-        <img
-          src={logoImage}
-          alt="MiVoto Logo"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      </Avatar>
-    </Box>
-    <Typography
-      variant="subtitle1"
-      sx={{ fontWeight: 'bold', letterSpacing: '0.28em', mt: 2 }}
-    >
-      MIVOTO
-    </Typography>
-  </Box>
-)
-
-const useBackgroundLayers = () =>
-  useMemo(
-    () => (
-      <>
-        <div className="background-gradients">
-          <div className="gradient gradient--one" />
-          <div className="gradient gradient--two" />
-          <div className="gradient gradient--three" />
-        </div>
-        <div className="login-bottom-arc" />
-      </>
-    ),
-    []
-  )
-
-function VotingPage({ username }) {
+function VotingPage({ username, institution, onChangeInstitution }) {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,23 +35,38 @@ function VotingPage({ username }) {
   const [voteHash, setVoteHash] = useState(null)
   const [sbtHash, setSbtHash] = useState(null)
 
-  const backgroundLayers = useBackgroundLayers()
+  const institutionId = institution?.id ?? null
 
   useEffect(() => {
+    if (!institutionId) {
+      setError('Selecciona una institucion para ver los candidatos.')
+      setLoading(false)
+      setCandidates([])
+      return
+    }
+
     const fetchCandidates = async () => {
+      setLoading(true)
+      setError(null)
+      setSelectedCandidate(null)
+      setVoted(false)
+      setOpenSuccessDialog(false)
+      setVoteHash(null)
+      setSbtHash(null)
+
       try {
-        const data = await getCandidates()
+        const data = await getCandidates(institutionId)
         setCandidates(data)
       } catch (err) {
         console.error('Error fetching candidates:', err)
-        setError('Error al cargar los candidatos. Volvé a intentar en unos minutos.')
+        setError('Error al cargar los candidatos. Intenta nuevamente en unos minutos.')
       } finally {
         setLoading(false)
       }
     }
 
     fetchCandidates()
-  }, [])
+  }, [institutionId])
 
   const handleOpenConfirmDialog = (candidate) => {
     if (!voted) {
@@ -143,39 +98,44 @@ function VotingPage({ username }) {
       setOpenSuccessDialog(true)
     } catch (err) {
       console.error('Error submitting vote:', err)
-      alert('Hubo un problema al registrar tu voto. Intentá nuevamente.')
+      alert('Hubo un problema al registrar tu voto. Intenta nuevamente.')
       handleCloseConfirmDialog()
     }
   }
 
-  const renderWithBackground = (content) => (
-    <div className="app-background">
-      {backgroundLayers}
-      {content}
-    </div>
+  const renderStatus = (title, subtitle, color = '#ffffff') => (
+    <AppBackground>
+      <Box sx={{ mt: 10, textAlign: 'center', color }}>
+        <Typography variant="h5">{title}</Typography>
+        {subtitle ? (
+          <Typography variant="body1" sx={{ mt: 1, opacity: 0.8 }}>
+            {subtitle}
+          </Typography>
+        ) : null}
+      </Box>
+    </AppBackground>
   )
 
-  if (loading) {
-    return renderWithBackground(
-      <Box sx={{ mt: 10, textAlign: 'center', color: '#ffffff' }}>
-        <Typography variant="h5">Cargando candidatos…</Typography>
-      </Box>
+  if (!institutionId) {
+    return renderStatus(
+      'Selecciona una institucion para continuar.',
+      'Volveras a esta pantalla cuando elijas una opcion.'
     )
+  }
+
+  if (loading) {
+    return renderStatus('Cargando candidatos...', 'Buscando representantes disponibles...')
   }
 
   if (error) {
-    return renderWithBackground(
-      <Box sx={{ mt: 10, textAlign: 'center', color: '#ffe0e0' }}>
-        <Typography variant="h6">{error}</Typography>
-      </Box>
-    )
+    return renderStatus(error, 'Intentaremos nuevamente en unos segundos.', '#ffe0e0')
   }
 
-  return renderWithBackground(
-    <>
+  return (
+    <AppBackground>
       <Container
         component="main"
-        maxWidth="md"
+        maxWidth="lg"
         sx={{
           position: 'relative',
           zIndex: 1,
@@ -185,13 +145,46 @@ function VotingPage({ username }) {
         <Box
           sx={{
             marginTop: { xs: 2, md: 4 },
-            padding: { xs: 3, md: 4 },
+            padding: { xs: 4, md: 6 },
             borderRadius: 3,
             bgcolor: 'rgba(12, 22, 56, 0.55)',
             boxShadow: '0 24px 60px rgba(9, 18, 54, 0.35)',
             backdropFilter: 'blur(18px)',
+            width: '100%',
+            maxWidth: 1160,
+            mx: 'auto',
+            pb: { xs: 5, md: 7 },
           }}
         >
+          <PageLogo />
+
+          {onChangeInstitution && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                onClick={onChangeInstitution}
+                startIcon={<SwapHorizIcon />}
+                sx={{
+                  px: 3,
+                  py: 1.5,
+                  fontWeight: 600,
+                  borderRadius: 999,
+                  color: '#0A1931',
+                  background:
+                    'linear-gradient(120deg, rgba(255,255,255,0.92) 0%, rgba(255,224,130,0.85) 100%)',
+                  boxShadow: '0 12px 28px rgba(0,0,0,0.25)',
+                  textTransform: 'none',
+                  '&:hover': {
+                    background:
+                      'linear-gradient(120deg, rgba(255,255,255,1) 0%, rgba(255,214,64,0.95) 100%)',
+                    boxShadow: '0 16px 36px rgba(0,0,0,0.35)',
+                  },
+                }}
+              >
+                Cambiar institucion
+              </Button>
+            </Box>
+          )}
+
           <Box
             sx={{
               bgcolor: 'rgba(0, 51, 102, 0.85)',
@@ -203,11 +196,40 @@ function VotingPage({ username }) {
             }}
           >
             <Typography component="h1" variant="h5" sx={{ fontWeight: 'bold' }}>
-              Elegí a la persona que querés que represente a nuestra comunidad.
+              Elegi a la persona que queres para {institution?.name}
             </Typography>
             <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.8 }}>
-              Explorá cada perfil y confirmá tu voto cuando estés seguro.
+              {institution?.description ||
+                'Explora cada perfil y confirma tu voto cuando estes seguro.'}
             </Typography>
+            <Box
+              sx={{
+                mt: 3,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                justifyContent: 'center',
+              }}
+            >
+              {institution?.scope ? (
+                <Chip
+                  label={institution.scope}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}
+                />
+              ) : null}
+              {institution?.location ? (
+                <Chip
+                  label={institution.location}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}
+                />
+              ) : null}
+              {institution?.electionDate ? (
+                <Chip
+                  label={`Jornada: ${institution.electionDate}`}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.08)', color: '#ffffff' }}
+                />
+              ) : null}
+            </Box>
           </Box>
 
           {voted && (
@@ -223,85 +245,122 @@ function VotingPage({ username }) {
               }}
             >
               <CheckCircleIcon sx={{ fontSize: 42, mb: 1 }} />
-              <Typography variant="h6">¡Tu voto fue registrado exitosamente!</Typography>
+              <Typography variant="h6">Tu voto fue registrado exitosamente.</Typography>
               <Typography variant="body1" sx={{ opacity: 0.9 }}>
                 Gracias por participar, {username}.
               </Typography>
             </Box>
           )}
 
-          <Grid container spacing={3} justifyContent="center">
+          <Grid
+            container
+            spacing={{ xs: 3, md: 4 }}
+            justifyContent="center"
+            alignItems="stretch"
+            sx={{ maxWidth: 1040, mx: 'auto' }}
+          >
             {candidates.map((candidate) => (
-              <Grid item key={candidate.id} xs={12} sm={6}>
-                <Card
+              <Grid
+                item
+                key={candidate.id}
+                xs={12}
+                sm={6}
+                md={6}
+                sx={{ display: 'flex', justifyContent: 'center' }}
+              >
+                <Box
                   sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    p: 2,
-                    borderRadius: 3,
-                    background:
-                      'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 100%)',
-                    boxShadow: '0 18px 38px rgba(6, 18, 54, 0.25)',
-                    border: '1px solid rgba(255, 255, 255, 0.18)',
-                    transition:
-                      'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                    '&:hover': !voted
-                      ? {
-                          transform: 'translateY(-6px)',
-                          boxShadow: '0 24px 52px rgba(6, 18, 54, 0.35)',
-                        }
-                      : {},
-                    opacity: voted ? 0.65 : 1,
-                    cursor: voted ? 'not-allowed' : 'pointer',
+                    width: '100%',
+                    maxWidth: 360,
+                    flex: '1 1 320px',
                   }}
                 >
-                  <CardActionArea
-                    onClick={() => handleOpenConfirmDialog(candidate)}
-                    disabled={voted}
+                  <Card
                     sx={{
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       width: '100%',
-                      py: 3,
+                      aspectRatio: '1 / 1',
+                      p: { xs: 3, md: 4 },
+                      borderRadius: 3,
+                      background:
+                        'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 100%)',
+                      boxShadow: '0 18px 38px rgba(6, 18, 54, 0.25)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
+                      transition:
+                        'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                      '&:hover': !voted
+                        ? {
+                            transform: 'translateY(-6px)',
+                            boxShadow: '0 24px 52px rgba(6, 18, 54, 0.35)',
+                          }
+                        : {},
+                      opacity: voted ? 0.65 : 1,
+                      cursor: voted ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    <Avatar
-                      alt={candidate.name}
-                      src={candidate.image}
+                    <CardActionArea
+                      onClick={() => handleOpenConfirmDialog(candidate)}
+                      disabled={voted}
                       sx={{
-                        width: 108,
-                        height: 108,
-                        mb: 2,
-                        border: '3px solid #FFD700',
-                        boxShadow: '0 12px 24px rgba(0, 0, 0, 0.35)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                        flexGrow: 1,
+                        py: { xs: 4, md: 5 },
+                        px: { xs: 1, md: 2 },
                       }}
-                    />
-                    <CardContent sx={{ textAlign: 'center', p: 0 }}>
-                      <Typography
-                        gutterBottom
-                        variant="h6"
-                        component="h2"
-                        sx={{ fontWeight: 'bold' }}
+                    >
+                      <Avatar
+                        alt={candidate.name}
+                        src={candidate.image}
+                        sx={{
+                          width: 128,
+                          height: 128,
+                          mb: 3,
+                          border: '3px solid #FFD700',
+                          boxShadow: '0 12px 24px rgba(0, 0, 0, 0.35)',
+                        }}
+                      />
+                      <CardContent
+                        sx={{
+                          textAlign: 'center',
+                          p: 0,
+                          width: '100%',
+                          px: { xs: 1, md: 2 },
+                        }}
                       >
-                        {candidate.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{ opacity: 0.8, mt: 1, color: '#f4f7ff' }}
-                      >
-                        {candidate.proposal}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
+                        <Typography
+                          gutterBottom
+                          variant="h6"
+                          component="h2"
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          {candidate.name}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            opacity: 0.85,
+                            mt: 1.5,
+                            color: '#f4f7ff',
+                            lineHeight: 1.7,
+                          }}
+                        >
+                          {candidate.proposal}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Box>
               </Grid>
             ))}
           </Grid>
-
-          <FooterLogo />
         </Box>
       </Container>
 
@@ -324,12 +383,12 @@ function VotingPage({ username }) {
         >
           <WarningIcon sx={{ fontSize: 60, color: 'warning.main', mb: 1 }} />
           <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
-            Confirmación de voto
+            Confirmacion de voto
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1" id="confirm-vote-dialog-description">
-            ¿Estás seguro de que querés votar por{' '}
+            Estas seguro de que queres votar por{' '}
             <Typography
               component="span"
               sx={{ fontWeight: 'bold', color: 'primary.main' }}
@@ -339,7 +398,7 @@ function VotingPage({ username }) {
             ?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Recordá que tu voto es anónimo e inmutable.
+            Recorda que tu voto es anonimo e inmutable.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, justifyContent: 'space-evenly' }}>
@@ -388,15 +447,15 @@ function VotingPage({ username }) {
         >
           <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
           <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
-            ¡Voto registrado!
+            Voto registrado
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
-            Gracias, {username}. Tu voto quedó emitido con éxito.
+            Gracias, {username}. Tu voto quedo emitido con exito.
           </Typography>
           <Typography variant="body1" sx={{ mt: 2 }}>
-            Generamos la constancia de participación (SBT).
+            Generamos la constancia de participacion (SBT).
           </Typography>
           <Box
             sx={{
@@ -408,7 +467,7 @@ function VotingPage({ username }) {
             }}
           >
             <Typography variant="caption" color="text.secondary">
-              Hash de transacción (voto):
+              Hash de transaccion (voto):
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
               {voteHash}
@@ -456,7 +515,7 @@ function VotingPage({ username }) {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </AppBackground>
   )
 }
 
