@@ -14,6 +14,7 @@ function Login({ onLoginSuccess }) {
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState({ type: '', message: '' })
+  const [showTutorial, setShowTutorial] = useState(false)
 
   const resetFeedback = () => setFeedback({ type: '', message: '' })
 
@@ -87,10 +88,36 @@ function Login({ onLoginSuccess }) {
           </p>
         )}
 
-        <a className="login-tutorial" href="#tutorial">
+        <button type="button" className="login-tutorial" onClick={() => setShowTutorial(true)}>
           ¿No sabés cómo votar? Ver tutorial
-        </a>
+        </button>
       </main>
+
+      {showTutorial && (
+        <div className="tutorial-modal" role="dialog" aria-modal="true">
+          <div
+            className="tutorial-modal__backdrop"
+            onClick={() => setShowTutorial(false)}
+            aria-hidden="true"
+          />
+          <div className="tutorial-modal__content">
+            <button
+              type="button"
+              className="tutorial-modal__close"
+              onClick={() => setShowTutorial(false)}
+            >
+              Cerrar
+            </button>
+            <video
+              className="tutorial-modal__video"
+              src="/videos/Tutorial.mp4"
+              controls
+              autoPlay
+              playsInline
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
