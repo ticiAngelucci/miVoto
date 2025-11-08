@@ -10,7 +10,6 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
-COPY src/main/resources/firebase-key.json /app/firebase-key.json 
 # El puerto 8080 es el puerto interno del contenedor.
 EXPOSE 8080
 
