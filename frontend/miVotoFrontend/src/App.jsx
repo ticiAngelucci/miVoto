@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import Login from './Login'
+import InstitutionSelection from './InstitutionSelection'
 import VotingPage from './VotingPage'
 
 const theme = createTheme({
@@ -45,9 +46,15 @@ const theme = createTheme({
 
 function App() {
   const [user, setUser] = useState(null)
+  const [selectedInstitution, setSelectedInstitution] = useState(null)
 
   const handleLoginSuccess = (username) => {
     setUser(username)
+    setSelectedInstitution(null)
+  }
+
+  const handleInstitutionSelect = (institution) => {
+    setSelectedInstitution(institution)
   }
 
   return (
@@ -55,8 +62,17 @@ function App() {
       <CssBaseline />
       {!user ? (
         <Login onLoginSuccess={handleLoginSuccess} />
+      ) : !selectedInstitution ? (
+        <InstitutionSelection
+          username={user}
+          onSelectInstitution={handleInstitutionSelect}
+        />
       ) : (
-        <VotingPage username={user} />
+        <VotingPage
+          username={user}
+          institution={selectedInstitution}
+          onChangeInstitution={() => setSelectedInstitution(null)}
+        />
       )}
     </ThemeProvider>
   )
