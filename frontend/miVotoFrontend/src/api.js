@@ -22,6 +22,47 @@ const hashKey = (value) => {
   return Math.abs(hash)
 }
 
+const DEFAULT_API_BASE_URL = 'https://mivoto-1.onrender.com'
+const LOGIN_ENDPOINT = '/api/auth/login'
+const VOTE_ENDPOINT = '/api/vote'
+const INSTITUTIONS_ENDPOINT = '/api/institutions'
+const LOGIN_TIMEOUT_MS = 10000
+const VOTE_TIMEOUT_MS = 15000
+const INSTITUTIONS_TIMEOUT_MS = 10000
+const ELECTIONS_TIMEOUT_MS = 12000
+
+const resolveApiBaseUrl = () => {
+  try {
+    const rawBaseUrl = import.meta.env?.VITE_API_BASE_URL ?? ''
+    if (rawBaseUrl.trim()) {
+      return rawBaseUrl.trim().replace(/\/+$/, '')
+    }
+  } catch {
+    // Running outside Vite (tests, storybook, etc.)
+  }
+  return DEFAULT_API_BASE_URL
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
+
+const buildApiUrl = (path) => {
+  if (!path) {
+    return API_BASE_URL
+  }
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+const buildInstitutionElectionsPath = (institutionId) =>
+  `${INSTITUTIONS_ENDPOINT}/${encodeURIComponent(institutionId)}/elections`
+
+const ensureNonEmptyString = (value, fallback) =>
+  typeof value === 'string' && value.trim() ? value.trim() : fallback
+
+const ensureNonNegativeNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
+}
+
 const assignFallbackImage = (id, providedUrl, pool) => {
   if (providedUrl) {
     return providedUrl
@@ -134,19 +175,93 @@ const mockInstitutions = [
   },
 ]
 
-export const getInstitutions = () => {
-  console.log('(API Mock) Obteniendo instituciones...')
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(
-        mockInstitutions.map(({ candidates, ...institution }) => ({
-          ...institution,
-          logo: assignFallbackImage(institution.id, institution.logo, institutionFallbackImages),
-          totalCandidates: candidates.length,
-        }))
-      )
-    }, 600)
-  })
+const normalizeInstitution = (institution, index = 0) => {
+  const safeId = ensureNonEmptyString(institution?.id, `institution-${index}`)
+  const logoSource =
+    institution?.logo || institution?.logoUrl || institution?.image || institution?.imageUrl
+
+  const candidateCountSource =
+    institution?.totalCandidates ??
+    institution?.membersCount ??
+    institution?.candidatesCount ??
+    (Array.isArray(institution?.candidates) ? institution.candidates.length : undefined)
+
+  return {
+    id: safeId,
+    name: ensureNonEmptyString(institution?.name, 'Institucion sin nombre'),
+    description: ensureNonEmptyString(
+      institution?.description,
+      'Sin descripcion disponible por el momento.'
+    ),
+    scope: ensureNonEmptyString(
+      institution?.scope || institution?.type || institution?.bodyType,
+      'Consejo Directivo'
+    ),
+    location: ensureNonEmptyString(
+      institution?.location || institution?.city || institution?.region,
+      'Ubicacion no informada'
+    ),
+    totalCandidates: ensureNonNegativeNumber(candidateCountSource, 0),
+    logo: assignFallbackImage(safeId, logoSource, institutionFallbackImages),
+  }
+}
+
+const getMockInstitutions = () =>
+  mockInstitutions.map(({ candidates, ...institution }) => ({
+    ...institution,
+    logo: assignFallbackImage(institution.id, institution.logo, institutionFallbackImages),
+    totalCandidates: candidates.length,
+  }))
+
+export const getInstitutions = async () => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), INSTITUTIONS_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(buildApiUrl(INSTITUTIONS_ENDPOINT), {
+      method: 'GET',
+      signal: controller.signal,
+    })
+
+    const responseBodyText = await response.text()
+    const responseBody = safeParseJson(responseBodyText)
+
+    if (!response.ok) {
+      const backendMessage =
+        responseBody?.message ||
+        responseBody?.error ||
+        responseBody?.details ||
+        responseBody?.status
+
+      throw new Error(backendMessage || 'No pudimos cargar las instituciones.')
+    }
+
+    const institutionsPayload = Array.isArray(responseBody)
+      ? responseBody
+      : Array.isArray(responseBody?.data)
+        ? responseBody.data
+        : Array.isArray(responseBody?.content)
+          ? responseBody.content
+          : []
+
+    if (!institutionsPayload.length) {
+      console.warn('[api] El backend devolvio una lista vacia de instituciones. Usando mock.')
+      return getMockInstitutions()
+    }
+
+    return institutionsPayload.map((institution, index) =>
+      normalizeInstitution(institution, index)
+    )
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn('[api] Timeout al consultar instituciones. Usando mock.')
+    } else {
+      console.warn('[api] Error al consultar instituciones reales. Usando mock.', error)
+    }
+    return getMockInstitutions()
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export const getInstitutionById = (institutionId) => {
@@ -165,58 +280,325 @@ export const getInstitutionById = (institutionId) => {
   }
 }
 
-export const loginUser = (username) => {
-  console.log(`(API Mock) Verificando a: ${username}`)
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (username.toLowerCase() === 'error') {
-        reject(new Error('Usuario no encontrado en el padron'))
-      } else {
-        resolve({ username, token: 'fake-jwt-token-123' })
-      }
-    }, 500)
+const buildMockCandidates = (institutionId) => {
+  const institution = getInstitutionById(institutionId) ?? mockInstitutions[0]
+
+  if (!institution) {
+    return null
+  }
+
+  return institution.candidates.map((candidate) => {
+    const fallbackKey = `${institution.id}-${candidate.id ?? candidate.name}`
+    return {
+      ...candidate,
+      image: assignFallbackImage(fallbackKey, candidate.image, candidateFallbackImages),
+      institutionId: institution.id,
+      institutionName: institution.name,
+      electionId: institution.id,
+      electionName: institution.scope ?? 'Proceso electoral',
+    }
   })
 }
 
-export const getCandidates = (institutionId) => {
-  console.log('(API Mock) Obteniendo candidatos...', institutionId)
-  return new Promise((resolve, reject) => {
+const getMockCandidates = (institutionId) =>
+  new Promise((resolve, reject) => {
     setTimeout(() => {
-      const institution = getInstitutionById(institutionId) ?? mockInstitutions[0]
-
-      if (!institution) {
+      const candidates = buildMockCandidates(institutionId)
+      if (!candidates) {
         reject(new Error('No encontramos la institucion solicitada.'))
         return
       }
-
-      resolve(
-        institution.candidates.map((candidate) => {
-          const fallbackKey = `${institution.id}-${candidate.id ?? candidate.name}`
-          return {
-            ...candidate,
-            image: assignFallbackImage(
-              fallbackKey,
-              candidate.image,
-              candidateFallbackImages
-            ),
-            institutionId: institution.id,
-            institutionName: institution.name,
-          }
-        })
-      )
-    }, 700)
+      resolve(candidates)
+    }, 500)
   })
+
+const normalizeElectionCandidates = (
+  elections,
+  institutionContext,
+  institutionIdForHash = 'institution'
+) => {
+  const resolvedInstitution = institutionContext ?? {
+    id: institutionIdForHash,
+    name: 'Institucion participante',
+  }
+
+  const normalized = []
+
+  elections.forEach((election, electionIndex) => {
+    const safeElectionId = ensureNonEmptyString(
+      election?.id,
+      `${resolvedInstitution.id}-election-${electionIndex + 1}`
+    )
+    const electionName = ensureNonEmptyString(
+      election?.name || election?.title,
+      'Proceso electoral'
+    )
+
+    const candidatesList = Array.isArray(election?.candidates) ? election.candidates : []
+
+    candidatesList.forEach((rawCandidate, candidateIndex) => {
+      const candidateObject =
+        typeof rawCandidate === 'string' ? { name: rawCandidate } : rawCandidate ?? {}
+
+      const safeCandidateId = ensureNonEmptyString(
+        candidateObject.id,
+        `${safeElectionId}-candidate-${candidateIndex + 1}`
+      )
+      const candidateName = ensureNonEmptyString(
+        candidateObject.name,
+        `Candidato ${candidateIndex + 1}`
+      )
+
+      const proposalFallback = `Propuesta presentada en ${electionName}.`
+
+      normalized.push({
+        id: safeCandidateId,
+        name: candidateName,
+        proposal: ensureNonEmptyString(
+          candidateObject.proposal ||
+            candidateObject.plan ||
+            candidateObject.manifesto ||
+            candidateObject.description,
+          proposalFallback
+        ),
+        image: assignFallbackImage(
+          `${resolvedInstitution.id}-${safeCandidateId}`,
+          candidateObject.image || candidateObject.imageUrl,
+          candidateFallbackImages
+        ),
+        electionId: safeElectionId,
+        electionName,
+        institutionId: resolvedInstitution.id,
+        institutionName: ensureNonEmptyString(
+          resolvedInstitution.name,
+          'Institucion participante'
+        ),
+      })
+    })
+  })
+
+  return normalized
 }
 
-export const submitVote = (username, candidateId) => {
-  console.log(`(API Mock) ${username} voto por ${candidateId}`)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        voteTxHash: `0x-fake-vote-hash-${Math.random().toString(16).slice(2)}`,
-        sbtTxHash: `0x-fake-sbt-constancia-${Math.random().toString(16).slice(2)}`,
-      })
-    }, 1000)
-  })
+const safeParseJson = (text) => {
+  if (!text) {
+    return null
+  }
+  try {
+    return JSON.parse(text)
+  } catch (error) {
+    console.warn('[api] No se pudo parsear la respuesta JSON del backend.', error)
+    return null
+  }
+}
+
+export const loginUser = async (username) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(buildApiUrl(LOGIN_ENDPOINT), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ displayName: username }),
+      signal: controller.signal,
+    })
+
+    const responseBody = safeParseJson(await response.text())
+
+    if (!response.ok) {
+      const backendMessage =
+        responseBody?.message ||
+        responseBody?.error ||
+        responseBody?.details ||
+        responseBody?.status
+
+      const isNameError = response.status === 400 || response.status === 404
+      const fallbackMessage = isNameError
+        ? 'No encontramos un votante con ese nombre. Verifica los datos e intentalo nuevamente.'
+        : 'No pudimos validar tus datos en este momento. Intentalo de nuevo en unos minutos.'
+
+      const error = new Error(backendMessage || fallbackMessage)
+      error.status = response.status
+      error.details = responseBody
+      throw error
+    }
+
+    const normalizedName = responseBody?.displayName || responseBody?.username || username
+
+    return {
+      ...responseBody,
+      username: normalizedName,
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(
+        'El servicio de autenticacion tardo demasiado en responder. Volve a intentarlo.'
+      )
+    }
+
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error('Ocurrio un error inesperado al iniciar sesion.')
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+export const getCandidates = async (institutionId, institutionContext = null) => {
+  if (!institutionId) {
+    return []
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ELECTIONS_TIMEOUT_MS)
+
+  const resolvedInstitution =
+    institutionContext ??
+    getInstitutionById(institutionId) ?? {
+      id: institutionId,
+      name: 'Institucion participante',
+    }
+
+  try {
+    const response = await fetch(
+      buildApiUrl(buildInstitutionElectionsPath(institutionId)),
+      {
+        method: 'GET',
+        signal: controller.signal,
+      }
+    )
+
+    const responseBodyText = await response.text()
+    const responseBody = safeParseJson(responseBodyText)
+
+    if (!response.ok) {
+      const backendMessage =
+        responseBody?.message ||
+        responseBody?.error ||
+        responseBody?.details ||
+        responseBody?.status
+
+      throw new Error(
+        backendMessage || 'No pudimos obtener los candidatos de esta institucion.'
+      )
+    }
+
+    const electionsPayload = Array.isArray(responseBody)
+      ? responseBody
+      : Array.isArray(responseBody?.data)
+        ? responseBody.data
+        : Array.isArray(responseBody?.content)
+          ? responseBody.content
+          : []
+
+    const candidates = normalizeElectionCandidates(
+      electionsPayload,
+      resolvedInstitution,
+      institutionId
+    )
+
+    if (!candidates.length) {
+      console.warn('[api] La institucion no tiene candidatos visibles. Usando mock.')
+      return getMockCandidates(institutionId)
+    }
+
+    return candidates
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn('[api] Timeout al consultar elecciones. Usando mock.')
+    } else {
+      console.warn('[api] Error al obtener elecciones reales. Usando mock.', error)
+    }
+    return getMockCandidates(institutionId)
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+const normalizeVoteResponse = (payload, fallbackVoteHash = null, fallbackSbtHash = null) => ({
+  ...payload,
+  voteTxHash:
+    payload?.voteTxHash ||
+    payload?.voteHash ||
+    payload?.transactionHash ||
+    payload?.txHash ||
+    fallbackVoteHash,
+  sbtTxHash:
+    payload?.sbtTxHash ||
+    payload?.sbtHash ||
+    payload?.sbtTransactionHash ||
+    payload?.sbtTx ||
+    fallbackSbtHash,
+})
+
+export const submitVote = async (username, candidateId, { electionId } = {}) => {
+  if (!username || !candidateId) {
+    throw new Error('Faltan datos para emitir el voto.')
+  }
+
+  const requestPayload = {
+    userId: username,
+    candidateId,
+    electionId,
+  }
+
+  const sanitizedPayload = Object.fromEntries(
+    Object.entries(requestPayload).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ''
+    )
+  )
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), VOTE_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(buildApiUrl(VOTE_ENDPOINT), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sanitizedPayload),
+      signal: controller.signal,
+    })
+
+    const responseBodyText = await response.text()
+    const responseBody = safeParseJson(responseBodyText) ?? { raw: responseBodyText }
+
+    if (!response.ok) {
+      const backendMessage =
+        responseBody?.message ||
+        responseBody?.error ||
+        responseBody?.details ||
+        responseBody?.status
+
+      const error = new Error(
+        backendMessage ||
+          'No pudimos registrar tu voto en este momento. Por favor, intentalo de nuevo.'
+      )
+      error.status = response.status
+      error.details = responseBody
+      throw error
+    }
+
+    return normalizeVoteResponse(responseBody)
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(
+        'El servicio de votos tardo demasiado en responder. Reintentemos en unos segundos.'
+      )
+    }
+
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error('Ocurrio un error inesperado al registrar el voto.')
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }

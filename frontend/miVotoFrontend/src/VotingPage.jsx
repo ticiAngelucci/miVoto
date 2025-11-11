@@ -55,7 +55,7 @@ function VotingPage({ username, institution, onChangeInstitution }) {
       setSbtHash(null)
 
       try {
-        const data = await getCandidates(institutionId)
+        const data = await getCandidates(institutionId, institution)
         setCandidates(data)
       } catch (err) {
         console.error('Error fetching candidates:', err)
@@ -90,15 +90,21 @@ function VotingPage({ username, institution, onChangeInstitution }) {
     }
 
     try {
-      const response = await submitVote(username, selectedCandidate.id)
-      setVoteHash(response.voteTxHash)
-      setSbtHash(response.sbtTxHash)
+      const response = await submitVote(username, selectedCandidate.id, {
+        electionId: selectedCandidate?.electionId ?? institutionId ?? undefined,
+      })
+      setVoteHash(response.voteTxHash ?? null)
+      setSbtHash(response.sbtTxHash ?? null)
       setVoted(true)
       handleCloseConfirmDialog()
       setOpenSuccessDialog(true)
     } catch (err) {
       console.error('Error submitting vote:', err)
-      alert('Hubo un problema al registrar tu voto. Intenta nuevamente.')
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Hubo un problema al registrar tu voto. Intenta nuevamente.'
+      alert(message)
       handleCloseConfirmDialog()
     }
   }
@@ -470,7 +476,7 @@ function VotingPage({ username, institution, onChangeInstitution }) {
               Hash de transaccion (voto):
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {voteHash}
+              {voteHash ?? 'No disponible'}
             </Typography>
             <Link
               href="#"
@@ -493,7 +499,7 @@ function VotingPage({ username, institution, onChangeInstitution }) {
               Hash de SBT:
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {sbtHash}
+              {sbtHash ?? 'No disponible'}
             </Typography>
             <Link
               href="#"
