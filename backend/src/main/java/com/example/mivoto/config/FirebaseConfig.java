@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
-// (No necesitas importar FileNotFoundException si usas el throw genérico)
 
 @Configuration
 public class FirebaseConfig {
@@ -22,14 +21,15 @@ public class FirebaseConfig {
   @Bean
   public Firestore firestore() throws Exception {
     
-    // 1. Lee la variable de entorno que SÍ existe en compose.yaml
+    // 1. Lee la variable de entorno que SÍ existe en Render y en compose.yaml
     var credsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
     
+    // 2. Esta es la validación que viste en el error de Render (¡está bien!)
     if (credsPath == null || credsPath.isEmpty()) {
         throw new RuntimeException("La variable de entorno GOOGLE_APPLICATION_CREDENTIALS no está definida.");
     }
 
-    // 2. Usa esa ruta para cargar el archivo
+    // 3. Usa esa ruta para cargar el archivo
     var creds = GoogleCredentials.fromStream(new FileInputStream(credsPath));
 
     if (FirebaseApp.getApps().isEmpty()) {
