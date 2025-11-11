@@ -10,52 +10,40 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException; // Importación necesaria
+// (No necesitas importar FileNotFoundException si usas el throw genérico)
 
 @Configuration
 public class FirebaseConfig {
 
-    // 1. Inyecta la ruta de montaje del Secret File que definiste en Render
-    //    (Ejemplo de valor en Render: /etc/secrets/firebase-key.json)
-    @Value("${FIREBASE_CREDENTIALS_PATH}")
-    private String firebaseCredentialsPath;
+  // La inyección del projectId SÍ funciona porque está en application.yaml
+  @Value("${app.firebase.projectId}")
+  private String projectId;
 
-    @Bean
-    public Firestore firestore(@Value("${app.firebase.projectId}") String projectId) throws Exception {
-
-        // 2. ¡Comprobación de seguridad! Esto evitará el NullPointerException si la variable no existe.
-        if (firebaseCredentialsPath == null || firebaseCredentialsPath.isEmpty()) {
-            throw new IllegalArgumentException(
-                "La ruta de credenciales de Firebase (FIREBASE_CREDENTIALS_PATH) no está configurada en Render."
-            );
-        }
-        
-        // 3. Usa la ruta inyectada directamente para abrir el archivo.
-        FileInputStream serviceAccount;
-        try {
-            serviceAccount = new FileInputStream(firebaseCredentialsPath);
-        } catch (FileNotFoundException e) {
-            // Este error significa que Render NO montó el Secret File en la ruta especificada.
-            System.err.println("ERROR: No se pudo encontrar el archivo de credenciales de Firebase en la ruta: " + firebaseCredentialsPath);
-            throw new RuntimeException("Fallo al cargar las credenciales de Firebase. Revise la ruta del Secret File en Render.", e);
-        }
-
-        var creds = GoogleCredentials.fromStream(serviceAccount);
-
-        // 4. Inicialización de Firebase
-        if (FirebaseApp.getApps().isEmpty()) {
-            FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(creds)
-                .setProjectId(projectId)
-                .build();
-            FirebaseApp.initializeApp(options);
-        }
-
-        // 5. Devolución de la instancia de Firestore
-        return FirestoreOptions.newBuilder()
-            .setProjectId(projectId)
-            .setCredentials(creds)
-            .build()
-            .getService();
+  @Bean
+  public Firestore firestore() throws Exception {
+    
+    // 1. Lee la variable de entorno que SÍ existe en compose.yaml
+    var credsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+    
+    if (credsPath == null || credsPath.isEmpty()) {
+        throw new RuntimeException("La variable de entorno GOOGLE_APPLICATION_CREDENTIALS no está definida.");
     }
+
+    // 2. Usa esa ruta para cargar el archivo
+    var creds = GoogleCredentials.fromStream(new FileInputStream(credsPath));
+
+    if (FirebaseApp.getApps().isEmpty()) {
+      FirebaseOptions options = FirebaseOptions.builder()
+          .setCredentials(creds)
+          .setProjectId(projectId)
+          .build();
+      FirebaseApp.initializeApp(options);
+    }
+
+    return FirestoreOptions.newBuilder()
+        .setProjectId(projectId)
+        .setCredentials(creds)
+        .build()
+        .getService();
+  }
 }
