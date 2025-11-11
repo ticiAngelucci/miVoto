@@ -2,6 +2,7 @@ package com.example.mivoto.service;
 
 import com.example.mivoto.dto.VoteRequest;
 import com.example.mivoto.model.Ballot;
+import com.example.mivoto.model.User; // <-- ¡IMPORTANTE! Asegúrate de importar User
 import com.google.cloud.firestore.Firestore;
 import org.springframework.stereotype.Service;
 
@@ -13,39 +14,48 @@ import java.util.concurrent.ExecutionException;
 public class VoteService {
 
     private final Firestore db;
-    private final BlockchainService blockchainService; // Inyectamos LA INTERFAZ
+    private final BlockchainService blockchainService; 
+    
+    // Inyecta el UserService para poder buscar la wallet del usuario
+    private final UserService userService;
 
-    public VoteService(Firestore db, BlockchainService blockchainService) {
+    public VoteService(Firestore db, BlockchainService blockchainService, UserService userService) {
         this.db = db;
-        this.blockchainService = blockchainService; // Spring pondrá aquí el MockService
+        this.blockchainService = blockchainService;
+        this.userService = userService;
     }
 
-    // El método principal de lógica de negocio
     public Map<String, String> processVote(VoteRequest request) throws Exception {
 
-        // 1. VERIFICAR DOBLE VOTO
-        // Buscamos en la colección 'ballots' si ya existe un documento
-        // con el mismo userId Y el mismo electionId
+        // 1. VERIFICAR DOBLE VOTO (Sin cambios)
         var ballotQuery = db.collection("ballots")
                             .whereEqualTo("userId", request.userId())
                             .whereEqualTo("electionId", request.electionId())
                             .get()
                             .get();
 
-        // Si la consulta NO está vacía, significa que ya votó.
         if (!ballotQuery.isEmpty()) {
-            // Lanzamos una excepción que el Controlador atrapará
             throw new IllegalStateException("Error: El usuario ya ha votado en esta elección.");
         }
 
-        // 2. ENVIAR VOTO ANÓNIMO A BLOCKCHAIN
-        // Si no ha votado, procedemos.
-        // Llamamos al servicio de blockchain SÓLO con los datos anónimos.
-        blockchainService.submitAnonymousVote(request.electionId(), request.candidateId());
+        // --- INICIO DE CAMBIOS ---
 
-        // 3. REGISTRAR PARTICIPACIÓN EN FIRESTORE
-        // Si el paso 2 no falló, creamos el "recibo" en nuestra DB
-        // para prevenir que vote de nuevo. (Nota: sin candidateId)
+        // 2. OBTENER WALLET DEL USUARIO
+        // Buscamos al usuario en Firestore para obtener su walletAddress
+        User user = db.collection("users").document(request.userId()).get().get().toObject(User.class);
+        if (user == null || user.getWalletAddress() == null || user.getWalletAddress().isEmpty()) {
+            throw new IllegalStateException("Error: El usuario no tiene una wallet asignada.");
+        }
+        String userWalletAddress = user.getWalletAddress();
+
+
+        // 3. REGISTRAR ELEGIBILIDAD (NUEVO PASO)
+        // Llamamos a issueToken ANTES de votar
+        blockchainService.issueToken(request.userId(), request.electionId(), userWalletAddress);
+
+        
+        // 4. REGISTRAR PARTICIPACIÓN EN FIRESTORE (Sin cambios)
+        // Guardamos el recibo ANTES de votar para asegurar el bloqueo
         Ballot newBallot = new Ballot(
             null,
             request.userId(),
@@ -53,15 +63,20 @@ public class VoteService {
             "VOTED",
             Instant.now()
         );
+        // Obtenemos la referencia del nuevo documento
+        var ballotRef = db.collection("ballots").add(newBallot).get();
+
+        // 5. EMITIR VOTO Y MINTEAR SBT (MÉTODO ACTUALIZADO)
+        // Llamamos a castVote. Ya no llamamos a mintSBT por separado.
+        String sbtId = blockchainService.castVote(
+            request.userId(),
+            request.electionId(),
+            request.candidateId()
+        );
         
-        // Guardamos el nuevo documento
-        db.collection("ballots").add(newBallot).get();
+        // --- FIN DE CAMBIOS ---
 
-        // 4. GENERAR SBT (Comprobante)
-        // (Esto podría fallar, en un proyecto real se manejaría en una cola)
-        String sbtId = blockchainService.mintSBT(request.userId(), request.electionId());
-
-        // 5. Devolver éxito
+        // 6. Devolver éxito
         return Map.of(
             "message", "Voto registrado con éxito",
             "sbtTransactionId", sbtId
