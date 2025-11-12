@@ -14,10 +14,11 @@ import { getInstitutions } from './api'
 import AppBackground from './components/AppBackground'
 import PageLogo from './components/PageLogo'
 
-function InstitutionSelection({ username, onSelectInstitution }) {
+function InstitutionSelection({ user, onSelectInstitution }) {
   const [institutions, setInstitutions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const displayName = user?.displayName || user?.username || user || 'votante'
 
   useEffect(() => {
     const fetchInstitutions = async () => {
@@ -97,7 +98,7 @@ function InstitutionSelection({ username, onSelectInstitution }) {
             }}
           >
             <Typography component="h1" variant="h5" sx={{ fontWeight: 'bold' }}>
-              Hola {username}, elegi la institucion en la que queres votar
+              Hola {displayName}, elegi la institucion en la que queres votar
             </Typography>
             <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.8 }}>
               Cada organismo tiene su propio cuerpo de representantes. Podes explorar las

@@ -48,8 +48,8 @@ function App() {
   const [user, setUser] = useState(null)
   const [selectedInstitution, setSelectedInstitution] = useState(null)
 
-  const handleLoginSuccess = (username) => {
-    setUser(username)
+  const handleLoginSuccess = (userPayload) => {
+    setUser(userPayload)
     setSelectedInstitution(null)
   }
 
@@ -64,12 +64,12 @@ function App() {
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : !selectedInstitution ? (
         <InstitutionSelection
-          username={user}
+          user={user}
           onSelectInstitution={handleInstitutionSelect}
         />
       ) : (
         <VotingPage
-          username={user}
+          user={user}
           institution={selectedInstitution}
           onChangeInstitution={() => setSelectedInstitution(null)}
         />

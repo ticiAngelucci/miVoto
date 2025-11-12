@@ -31,7 +31,7 @@ function Login({ onLoginSuccess }) {
 
     try {
       const response = await loginUser(name.trim())
-      onLoginSuccess(response.username)
+      onLoginSuccess(response)
     } catch (error) {
       console.error(error)
       const message =

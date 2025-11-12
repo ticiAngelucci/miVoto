@@ -24,7 +24,7 @@ import AppBackground from './components/AppBackground'
 import PageLogo from './components/PageLogo'
 import './App.css'
 
-function VotingPage({ username, institution, onChangeInstitution }) {
+function VotingPage({ user, institution, onChangeInstitution }) {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -36,6 +36,8 @@ function VotingPage({ username, institution, onChangeInstitution }) {
   const [sbtHash, setSbtHash] = useState(null)
 
   const institutionId = institution?.id ?? null
+  const userId = user?.id ?? null
+  const userDisplayName = user?.displayName || user?.username || 'votante'
 
   useEffect(() => {
     if (!institutionId) {
@@ -90,7 +92,10 @@ function VotingPage({ username, institution, onChangeInstitution }) {
     }
 
     try {
-      const response = await submitVote(username, selectedCandidate.id, {
+      if (!userId) {
+        throw new Error('No pudimos identificar al votante. Volve a iniciar sesion.')
+      }
+      const response = await submitVote(userId, selectedCandidate.id, {
         electionId: selectedCandidate?.electionId ?? institutionId ?? undefined,
       })
       setVoteHash(response.voteTxHash ?? null)
@@ -253,7 +258,7 @@ function VotingPage({ username, institution, onChangeInstitution }) {
               <CheckCircleIcon sx={{ fontSize: 42, mb: 1 }} />
               <Typography variant="h6">Tu voto fue registrado exitosamente.</Typography>
               <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                Gracias por participar, {username}.
+            Gracias por participar, {userDisplayName}.
               </Typography>
             </Box>
           )}
@@ -458,7 +463,7 @@ function VotingPage({ username, institution, onChangeInstitution }) {
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
-            Gracias, {username}. Tu voto quedo emitido con exito.
+            Gracias, {userDisplayName}. Tu voto quedo emitido con exito.
           </Typography>
           <Typography variant="body1" sx={{ mt: 2 }}>
             Generamos la constancia de participacion (SBT).

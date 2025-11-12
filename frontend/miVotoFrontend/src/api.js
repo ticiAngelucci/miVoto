@@ -543,13 +543,13 @@ const normalizeVoteResponse = (payload, fallbackVoteHash = null, fallbackSbtHash
     fallbackSbtHash,
 })
 
-export const submitVote = async (username, candidateId, { electionId } = {}) => {
-  if (!username || !candidateId) {
+export const submitVote = async (userId, candidateId, { electionId } = {}) => {
+  if (!userId || !candidateId) {
     throw new Error('Faltan datos para emitir el voto.')
   }
 
   const requestPayload = {
-    userId: username,
+    userId,
     candidateId,
     electionId,
   }
