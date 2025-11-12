@@ -8,8 +8,11 @@ services:
     image: mivoto-backend:dev
     environment:
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
-      GOOGLE_APPLICATION_CREDENTIALS: /secrets/service-account.json
+      # 1. Cambia el VALOR para que coincida con Render
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/secrets/service-account.json
     volumes:
-      - ./secrets/service-account.json:/secrets/service-account.json:ro
+      # 2. Cambia la RUTA de montaje para que coincida con Render
+      - ./secrets/service-account.json:/etc/secrets/service-account.json:ro
     ports:
       - "8080:8080"
+      
