@@ -7,12 +7,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    private static final String FRONTEND_ORIGIN = "https://mi-voto-theta.vercel.app";
+    private static final String[] ALLOWED_METHODS = {"GET", "POST", "OPTIONS"};
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("https://mi-voto-theta.vercel.app")
-                .allowedMethods("POST", "OPTIONS")
+                .allowedOrigins(FRONTEND_ORIGIN)
+                .allowedMethods(ALLOWED_METHODS)
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }
