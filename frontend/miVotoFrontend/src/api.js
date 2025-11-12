@@ -26,10 +26,11 @@ const DEFAULT_API_BASE_URL = 'https://mivoto-backend.onrender.com'
 const LOGIN_ENDPOINT = '/api/auth/login'
 const VOTE_ENDPOINT = '/api/vote'
 const INSTITUTIONS_ENDPOINT = '/api/institutions'
-const LOGIN_TIMEOUT_MS = 10000
+const LOGIN_TIMEOUT_MS = 20000
 const VOTE_TIMEOUT_MS = 15000
 const INSTITUTIONS_TIMEOUT_MS = 10000
 const ELECTIONS_TIMEOUT_MS = 12000
+const LOGIN_MAX_RETRIES = 1
 
 const resolveApiBaseUrl = () => {
   try {
@@ -392,7 +393,7 @@ const safeParseJson = (text) => {
   }
 }
 
-export const loginUser = async (username) => {
+export const loginUser = async (username, attempt = 0) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS)
 
@@ -434,6 +435,12 @@ export const loginUser = async (username) => {
     }
   } catch (error) {
     if (error.name === 'AbortError') {
+      if (attempt < LOGIN_MAX_RETRIES) {
+        console.warn(
+          `[api] Login timeout (intento ${attempt + 1}). Reintentando hasta ${LOGIN_MAX_RETRIES} vez/veces.`
+        )
+        return loginUser(username, attempt + 1)
+      }
       throw new Error(
         'El servicio de autenticacion tardo demasiado en responder. Volve a intentarlo.'
       )
