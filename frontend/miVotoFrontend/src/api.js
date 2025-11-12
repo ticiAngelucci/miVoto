@@ -22,7 +22,7 @@ const hashKey = (value) => {
   return Math.abs(hash)
 }
 
-const DEFAULT_API_BASE_URL = 'https://mivoto-1.onrender.com'
+const DEFAULT_API_BASE_URL = 'https://mivoto-backend.onrender.com'
 const LOGIN_ENDPOINT = '/api/auth/login'
 const VOTE_ENDPOINT = '/api/vote'
 const INSTITUTIONS_ENDPOINT = '/api/institutions'
