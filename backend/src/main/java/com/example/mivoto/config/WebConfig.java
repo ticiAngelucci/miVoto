@@ -9,6 +9,10 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // Dejamos este método vacío. El CorsFilter.java se encargará de todo.
+        registry.addMapping("/**")
+                .allowedOrigins("https://mi-voto-theta.vercel.app")
+                .allowedMethods("POST", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }
