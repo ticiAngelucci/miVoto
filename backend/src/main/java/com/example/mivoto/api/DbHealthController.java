@@ -1,12 +1,10 @@
 package com.example.mivoto.api;
 
 import com.google.cloud.firestore.Firestore;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.Map;
-@CrossOrigin(origins = "${FRONT_URL}")
 @RestController
 public class DbHealthController {
 
