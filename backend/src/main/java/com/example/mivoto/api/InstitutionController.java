@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map; // <-- ¡ASEGÚRATE DE AGREGAR ESTE IMPORT!
 
 // (Ya no necesitamos los imports de Logger)
-
+@CrossOrigin(origins = "${FRONT_URL}")
 @RestController
 @RequestMapping("/api/institutions") 
 public class InstitutionController {

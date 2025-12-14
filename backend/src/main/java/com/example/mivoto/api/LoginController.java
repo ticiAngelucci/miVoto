@@ -15,7 +15,7 @@ import java.util.Optional;
 // El frontend enviará: {"displayName": "ticiangelucci"}
 record LoginRequest(String displayName) {}
 
-
+@CrossOrigin(origins = "${FRONT_URL}")
 @RestController
 @RequestMapping("/api/auth")
 public class LoginController {

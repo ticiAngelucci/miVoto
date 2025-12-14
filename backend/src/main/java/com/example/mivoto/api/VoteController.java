@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
-
+@CrossOrigin(origins = "${FRONT_URL}")
 @RestController
 @RequestMapping("/api")
 public class VoteController {

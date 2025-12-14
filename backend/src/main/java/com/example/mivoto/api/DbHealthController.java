@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.Map;
-
+@CrossOrigin(origins = "${FRONT_URL}")
 @RestController
 public class DbHealthController {
 
