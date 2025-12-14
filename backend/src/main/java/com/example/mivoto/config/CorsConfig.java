@@ -1,34 +1,40 @@
 package com.example.mivoto.config;
 
-import java.util.List;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
 @Configuration
+@EnableConfigurationProperties(CorsProperties.class)
 public class CorsConfig {
 
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "https://mi-voto-theta.vercel.app",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173");
-    private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of("https://*.vercel.app");
-    private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "OPTIONS");
-    private static final long MAX_AGE_SECONDS = 3600L;
+    private final CorsProperties corsProperties;
+
+    public CorsConfig(CorsProperties corsProperties) {
+        this.corsProperties = corsProperties;
+    }
 
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
-        config.setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
+        if (!CollectionUtils.isEmpty(corsProperties.getAllowedOrigins())) {
+            corsProperties.getAllowedOrigins().forEach(config::addAllowedOrigin);
+        }
+        if (!CollectionUtils.isEmpty(corsProperties.getAllowedOriginPatterns())) {
+            corsProperties.getAllowedOriginPatterns().forEach(config::addAllowedOriginPattern);
+        }
         config.addAllowedHeader("*");
-        ALLOWED_METHODS.forEach(config::addAllowedMethod);
+        if (!CollectionUtils.isEmpty(corsProperties.getAllowedMethods())) {
+            corsProperties.getAllowedMethods().forEach(config::addAllowedMethod);
+        }
         config.setAllowCredentials(true);
-        config.setMaxAge(MAX_AGE_SECONDS);
+        config.setMaxAge(corsProperties.getMaxAgeSeconds());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

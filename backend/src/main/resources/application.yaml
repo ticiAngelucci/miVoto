@@ -4,6 +4,18 @@ server:
 app:
   firebase:
     projectId: ${FIREBASE_PROJECT_ID}
+  cors:
+    allowed-origins:
+      - ${FRONT_URL:https://mi-voto-theta.vercel.app}
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+    allowed-origin-patterns:
+      - https://*.vercel.app
+    allowed-methods:
+      - GET
+      - POST
+      - OPTIONS
+    max-age-seconds: 3600
 
 blockchain:
   baseUrl: http://mock-blockchain-service:8081
