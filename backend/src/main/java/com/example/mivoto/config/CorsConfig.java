@@ -10,18 +10,19 @@ import org.springframework.web.filter.CorsFilter;
 @Configuration
 public class CorsConfig {
 
-    private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of(
+    private static final List<String> ALLOWED_ORIGINS = List.of(
             "https://mi-voto-theta.vercel.app",
-            "https://*.vercel.app",
             "http://localhost:5173",
             "http://127.0.0.1:5173");
+    private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of("https://*.vercel.app");
     private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "OPTIONS");
     private static final long MAX_AGE_SECONDS = 3600L;
 
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        ALLOWED_ORIGIN_PATTERNS.forEach(config::addAllowedOriginPattern);
+        config.setAllowedOrigins(ALLOWED_ORIGINS);
+        config.setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
         config.addAllowedHeader("*");
         ALLOWED_METHODS.forEach(config::addAllowedMethod);
         config.setAllowCredentials(true);
