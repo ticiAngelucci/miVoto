@@ -4,12 +4,14 @@ import com.example.mivoto.dto.VoteRequest;
 import com.example.mivoto.service.VoteService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api")
 public class VoteController {

@@ -3,12 +3,14 @@ package com.example.mivoto.api;
 import com.example.mivoto.model.Election;
 import com.example.mivoto.service.ElectionService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api/institutions") // Nota: La base sigue siendo /api/institutions
 public class ElectionController {

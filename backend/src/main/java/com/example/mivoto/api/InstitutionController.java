@@ -3,6 +3,7 @@ package com.example.mivoto.api;
 import com.example.mivoto.model.Institution;
 import com.example.mivoto.service.InstitutionService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map; // <-- ¡ASEGÚRATE DE AGREGAR ESTE IMPORT!
 
 // (Ya no necesitamos los imports de Logger)
+@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api/institutions") 
 public class InstitutionController {

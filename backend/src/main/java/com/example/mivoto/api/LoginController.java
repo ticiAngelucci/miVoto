@@ -3,6 +3,7 @@ package com.example.mivoto.api;
 import com.example.mivoto.model.User;
 import com.example.mivoto.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,7 @@ import java.util.Optional;
 // El frontend enviará: {"displayName": "ticiangelucci"}
 record LoginRequest(String displayName) {}
 
+@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api/auth")
 public class LoginController {
