@@ -12,7 +12,9 @@ public class CorsConfig {
 
     private static final List<String> ALLOWED_ORIGIN_PATTERNS = List.of(
             "https://mi-voto-theta.vercel.app",
-            "http://localhost:5173");
+            "https://*.vercel.app",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173");
     private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "OPTIONS");
     private static final long MAX_AGE_SECONDS = 3600L;
 
