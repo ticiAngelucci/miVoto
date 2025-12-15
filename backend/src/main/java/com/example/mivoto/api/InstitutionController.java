@@ -12,9 +12,10 @@ import java.util.List;
 import java.util.Map; // <-- ¡ASEGÚRATE DE AGREGAR ESTE IMPORT!
 
 // (Ya no necesitamos los imports de Logger)
-@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api/institutions") 
+@CrossOrigin(origins = "${FRONT_URL}")
+
 public class InstitutionController {
 
     private final InstitutionService institutionService;

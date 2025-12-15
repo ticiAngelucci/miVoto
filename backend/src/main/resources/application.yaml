@@ -25,4 +25,6 @@ logging:
     root: DEBUG
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
 
-    
+spring:
+  config:
+    import: optional:file:.env[.properties]

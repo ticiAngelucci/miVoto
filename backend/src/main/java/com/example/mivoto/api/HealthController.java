@@ -4,8 +4,9 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
-@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
+@CrossOrigin(origins = "${FRONT_URL}")
+
 public class HealthController {
 
   @GetMapping({"/", "/health"})

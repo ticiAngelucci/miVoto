@@ -10,8 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
+@CrossOrigin(origins = "${FRONT_URL}")
+
 @RequestMapping("/api/institutions") // Nota: La base sigue siendo /api/institutions
 public class ElectionController {
 

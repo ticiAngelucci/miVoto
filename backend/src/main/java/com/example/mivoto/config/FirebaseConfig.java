@@ -18,11 +18,14 @@ public class FirebaseConfig {
   @Value("${app.firebase.projectId}")
   private String projectId;
 
+@Value("${GOOGLE_APPLICATION_CREDENTIALS}")
+  private String credentials;
+
   @Bean
   public Firestore firestore() throws Exception {
     
     // 1. Lee la variable de entorno que SÍ existe en Render y en compose.yaml
-    var credsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+    var credsPath = credentials;
     
     // 2. Esta es la validación que viste en el error de Render (¡está bien!)
     if (credsPath == null || credsPath.isEmpty()) {

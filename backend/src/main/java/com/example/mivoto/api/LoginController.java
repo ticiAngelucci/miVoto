@@ -16,9 +16,9 @@ import java.util.Optional;
 // El frontend enviará: {"displayName": "ticiangelucci"}
 record LoginRequest(String displayName) {}
 
-@CrossOrigin(origins = "${FRONT_URL:https://mi-voto-theta.vercel.app}")
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "${FRONT_URL}")
 public class LoginController {
 
     private final UserService userService;
