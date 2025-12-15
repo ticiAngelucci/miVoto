@@ -20,8 +20,23 @@ Esta documentación describe la arquitectura de datos del proyecto, que utiliza 
    3. Colección votos_emitidos (control de doble voto): Prevenir el doble voto y registrar la prueba criptográfica de participación, sin almacenar el voto real.
 
 
-3. Capa descentralizada: Blockchain
-   El contrato inteligente (contrato_address) contiene la única fuente de verdad sobre el conteo de votos.
-      * Entrada de votos: Solo acepta la opción y la firma de la clave del backend de FastAPI. Nunca acepta la UID del votante
-      * Almacenamiento: Mantiene un registro interno para contar el total de votos por opción de forma anónima.
-      * Resultados: Expone una función para que cualquier auditor pueda ver los resultados consolidados.
+   3. Capa descentralizada: Blockchain
+      El contrato inteligente (contrato_address) contiene la única fuente de verdad sobre el conteo de votos.
+         * Entrada de votos: Solo acepta la opción y la firma de la clave del backend de FastAPI. Nunca acepta la UID del votante
+         * Almacenamiento: Mantiene un registro interno para contar el total de votos por opción de forma anónima.
+         * Resultados: Expone una función para que cualquier auditor pueda ver los resultados consolidados.
+
+## Variables de entorno requeridas (backend)
+
+Para que el backend pueda firmar transacciones reales en Sepolia necesitas definir estas variables antes de iniciar Spring Boot (o proveerlas en Render/Docker Compose):
+
+```
+BLOCKCHAIN_PROVIDER_URL=https://sepolia.infura.io/v3/<tu_project_id>
+BLOCKCHAIN_PRIVATE_KEY=<clave_privada_de_la_cuenta_que_mintea>
+BLOCKCHAIN_ELECTION_CONTRACT=<address_del_MiVotoElection>
+BLOCKCHAIN_CHAIN_ID=11155111
+BLOCKCHAIN_GAS_PRICE=20000000000
+BLOCKCHAIN_GAS_LIMIT=600000
+```
+
+Si solo quieres probar el flujo sin tocar la red, ejecuta con `SPRING_PROFILES_ACTIVE=mock` para usar el servicio simulado. Cuando estas variables no están presentes, el servicio Web3 no puede inicializarse y Spring abortará el arranque del backend.

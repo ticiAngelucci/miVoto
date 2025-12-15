@@ -10,6 +10,12 @@ services:
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       # 1. Cambia el VALOR para que coincida con Render
       GOOGLE_APPLICATION_CREDENTIALS: /etc/secrets/service-account.json
+      BLOCKCHAIN_PROVIDER_URL: ${BLOCKCHAIN_PROVIDER_URL}
+      BLOCKCHAIN_PRIVATE_KEY: ${BLOCKCHAIN_PRIVATE_KEY}
+      BLOCKCHAIN_ELECTION_CONTRACT: ${BLOCKCHAIN_ELECTION_CONTRACT}
+      BLOCKCHAIN_CHAIN_ID: ${BLOCKCHAIN_CHAIN_ID:-11155111}
+      BLOCKCHAIN_GAS_PRICE: ${BLOCKCHAIN_GAS_PRICE:-20000000000}
+      BLOCKCHAIN_GAS_LIMIT: ${BLOCKCHAIN_GAS_LIMIT:-600000}
     volumes:
       # 2. Cambia la RUTA de montaje para que coincida con Render
       - ./secrets/service-account.json:/etc/secrets/service-account.json:ro
