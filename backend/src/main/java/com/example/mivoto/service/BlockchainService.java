@@ -10,7 +10,6 @@ public interface BlockchainService {
     void issueToken(String userId, String electionId, String userWalletAddress) throws Exception;
 
     // 3. (NUEVO - Reemplaza a mintSBT)
-    // Coincide con MiVotoElection.castVote()
-    // Devuelve el ID del SBT minteado (como String para el mock)
-    String castVote(String userId, String electionId, String candidateId) throws Exception;
+    // Debe devolver hashes/ID necesarios para mostrar en el front.
+    VoteExecutionResult castVote(String userId, String electionId, String candidateId, String ballotDocumentId) throws Exception;
 }

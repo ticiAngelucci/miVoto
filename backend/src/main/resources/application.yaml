@@ -18,7 +18,12 @@ app:
     max-age-seconds: 3600
 
 blockchain:
-  baseUrl: http://mock-blockchain-service:8081
+  providerUrl: ${BLOCKCHAIN_PROVIDER_URL:https://sepolia.infura.io/v3/YOUR_PROJECT_ID}
+  privateKey: ${BLOCKCHAIN_PRIVATE_KEY:}
+  electionContractAddress: ${BLOCKCHAIN_ELECTION_CONTRACT:0x0000000000000000000000000000000000000000}
+  chainId: ${BLOCKCHAIN_CHAIN_ID:11155111}
+  gasPrice: ${BLOCKCHAIN_GAS_PRICE:20000000000} # 20 gwei
+  gasLimit: ${BLOCKCHAIN_GAS_LIMIT:600000}
 
 logging:
   level:

@@ -1,8 +1,10 @@
 package com.example.mivoto.service;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-@Service 
+@Service
+@Profile("mock")
 public class MockBlockchainService implements BlockchainService {
 
     // 1. (Sin cambios)
@@ -30,7 +32,7 @@ public class MockBlockchainService implements BlockchainService {
 
     // 3. (NUEVO) Simula el voto Y el minteo del SBT
     @Override
-    public String castVote(String userId, String electionId, String candidateId) throws Exception {
+    public VoteExecutionResult castVote(String userId, String electionId, String candidateId, String ballotDocumentId) throws Exception {
         System.out.println("====== MOCK BLOCKCHAIN ======");
         System.out.println("EMITIENDO VOTO (castVote)");
         System.out.println("... Voto anónimo por: " + candidateId);
@@ -40,6 +42,7 @@ public class MockBlockchainService implements BlockchainService {
         System.out.println("... SBT minteado internamente. Token ID: " + fakeSbtId);
         System.out.println("=============================");
         
-        return fakeSbtId;
+        String txHash = "0xmocktx" + Math.abs((candidateId + ballotDocumentId).hashCode());
+        return new VoteExecutionResult(txHash, txHash, fakeSbtId);
     }
 }

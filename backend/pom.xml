@@ -74,6 +74,13 @@
       <version>2.5.0</version> 
     </dependency>
 
+    <!-- Web3j para interactuar con contratos en Ethereum -->
+    <dependency>
+      <groupId>org.web3j</groupId>
+      <artifactId>core</artifactId>
+      <version>4.10.3</version>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -105,5 +112,4 @@
     </plugins>
   </build>
 </project>
-
 

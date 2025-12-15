@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 @Service
 public class VoteService {
@@ -65,13 +64,15 @@ public class VoteService {
         );
         // Obtenemos la referencia del nuevo documento
         var ballotRef = db.collection("ballots").add(newBallot).get();
+        String ballotDocumentId = ballotRef.getId();
 
         // 5. EMITIR VOTO Y MINTEAR SBT (MÉTODO ACTUALIZADO)
         // Llamamos a castVote. Ya no llamamos a mintSBT por separado.
-        String sbtId = blockchainService.castVote(
+        VoteExecutionResult executionResult = blockchainService.castVote(
             request.userId(),
             request.electionId(),
-            request.candidateId()
+            request.candidateId(),
+            ballotDocumentId
         );
         
         // --- FIN DE CAMBIOS ---
@@ -79,7 +80,9 @@ public class VoteService {
         // 6. Devolver éxito
         return Map.of(
             "message", "Voto registrado con éxito",
-            "sbtTransactionId", sbtId
+            "voteTransactionHash", executionResult.voteTransactionHash(),
+            "sbtTransactionHash", executionResult.sbtTransactionHash(),
+            "sbtTokenId", executionResult.sbtTokenId()
         );
     }
 }
