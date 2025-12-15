@@ -47,11 +47,13 @@ public class Web3BlockchainService implements BlockchainService {
     private static final Event VOTE_CAST_EVENT = new Event(
         "VoteCast",
         Arrays.asList(
-            new TypeReference<Uint256>() {},
+            new TypeReference<Uint256>(true) {},
+            new TypeReference<Bytes32>(true) {},
+            new TypeReference<Address>(true) {}
+        ),
+        Arrays.asList(
             new TypeReference<Bytes32>() {},
             new TypeReference<Bytes32>() {},
-            new TypeReference<Bytes32>() {},
-            new TypeReference<Address>() {},
             new TypeReference<Uint256>() {}
         )
     );
@@ -162,11 +164,7 @@ public class Web3BlockchainService implements BlockchainService {
             }
             List<Type> decoded = FunctionReturnDecoder.decode(
                 log.getData(),
-                Arrays.asList(
-                    new TypeReference<Bytes32>() {},
-                    new TypeReference<Bytes32>() {},
-                    new TypeReference<Uint256>() {}
-                )
+                VOTE_CAST_EVENT.getNonIndexedParameters()
             );
             if (decoded.size() == 3) {
                 Type tokenType = decoded.get(2);
