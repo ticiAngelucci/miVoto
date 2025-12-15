@@ -57,11 +57,6 @@ public class Web3BlockchainService implements BlockchainService {
     );
 
     private static final String VOTE_CAST_TOPIC = EventEncoder.encode(VOTE_CAST_EVENT);
-    private static final List<TypeReference<?>> VOTE_CAST_NON_INDEXED = Arrays.asList(
-        new TypeReference<Bytes32>() {},
-        new TypeReference<Bytes32>() {},
-        new TypeReference<Uint256>() {}
-    );
 
     private final Web3j web3j;
     private final TransactionManager transactionManager;
@@ -165,7 +160,14 @@ public class Web3BlockchainService implements BlockchainService {
             if (!topics.get(0).equals(VOTE_CAST_TOPIC)) {
                 continue;
             }
-            List<Type> decoded = FunctionReturnDecoder.decode(log.getData(), VOTE_CAST_NON_INDEXED);
+            List<Type> decoded = FunctionReturnDecoder.decode(
+                log.getData(),
+                Arrays.asList(
+                    new TypeReference<Bytes32>() {},
+                    new TypeReference<Bytes32>() {},
+                    new TypeReference<Uint256>() {}
+                )
+            );
             if (decoded.size() == 3) {
                 Type tokenType = decoded.get(2);
                 if (tokenType instanceof Uint256 uint256) {
