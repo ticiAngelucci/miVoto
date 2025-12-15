@@ -1,3 +1,5 @@
+import axios from 'axios'
+
 const institutionFallbackImages = [
   'https://images.unsplash.com/photo-1482784160316-6eb046863ece?auto=format&fit=crop&w=400&q=80',
   'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=400&q=80',
@@ -46,12 +48,18 @@ const resolveApiBaseUrl = () => {
 
 const API_BASE_URL = resolveApiBaseUrl()
 
-const buildApiUrl = (path) => {
-  if (!path) {
-    return API_BASE_URL
-  }
-  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+})
+
+if (apiClient?.defaults?.headers?.common?.['X-Requested-With']) {
+  delete apiClient.defaults.headers.common['X-Requested-With']
 }
+
+const isAbortLikeError = (error) =>
+  error?.name === 'AbortError' || error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED'
+
+const isTimeoutError = (error) => error?.code === 'ECONNABORTED'
 
 const buildInstitutionElectionsPath = (institutionId) =>
   `${INSTITUTIONS_ENDPOINT}/${encodeURIComponent(institutionId)}/elections`
@@ -219,23 +227,12 @@ export const getInstitutions = async () => {
   const timeoutId = setTimeout(() => controller.abort(), INSTITUTIONS_TIMEOUT_MS)
 
   try {
-    const response = await fetch(buildApiUrl(INSTITUTIONS_ENDPOINT), {
-      method: 'GET',
+    const response = await apiClient.get(INSTITUTIONS_ENDPOINT, {
       signal: controller.signal,
+      timeout: INSTITUTIONS_TIMEOUT_MS,
     })
 
-    const responseBodyText = await response.text()
-    const responseBody = safeParseJson(responseBodyText)
-
-    if (!response.ok) {
-      const backendMessage =
-        responseBody?.message ||
-        responseBody?.error ||
-        responseBody?.details ||
-        responseBody?.status
-
-      throw new Error(backendMessage || 'No pudimos cargar las instituciones.')
-    }
+    const responseBody = parseResponseData(response.data)
 
     const institutionsPayload = Array.isArray(responseBody)
       ? responseBody
@@ -254,7 +251,7 @@ export const getInstitutions = async () => {
       normalizeInstitution(institution, index)
     )
   } catch (error) {
-    if (error.name === 'AbortError') {
+    if (isAbortLikeError(error) || isTimeoutError(error)) {
       console.warn('[api] Timeout al consultar instituciones. Usando mock.')
     } else {
       console.warn('[api] Error al consultar instituciones reales. Usando mock.', error)
@@ -393,39 +390,31 @@ const safeParseJson = (text) => {
   }
 }
 
+const parseResponseData = (payload) => {
+  if (typeof payload === 'string') {
+    return safeParseJson(payload)
+  }
+  return payload ?? null
+}
+
 export const loginUser = async (username, attempt = 0) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS)
 
   try {
-    const response = await fetch(buildApiUrl(LOGIN_ENDPOINT), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ displayName: username }),
-      signal: controller.signal,
-    })
+    const response = await apiClient.post(
+      LOGIN_ENDPOINT,
+      { displayName: username },
+      {
+        signal: controller.signal,
+        timeout: LOGIN_TIMEOUT_MS,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
-    const responseBody = safeParseJson(await response.text())
-
-    if (!response.ok) {
-      const backendMessage =
-        responseBody?.message ||
-        responseBody?.error ||
-        responseBody?.details ||
-        responseBody?.status
-
-      const isNameError = response.status === 400 || response.status === 404
-      const fallbackMessage = isNameError
-        ? 'No encontramos un votante con ese nombre. Verifica los datos e intentalo nuevamente.'
-        : 'No pudimos validar tus datos en este momento. Intentalo de nuevo en unos minutos.'
-
-      const error = new Error(backendMessage || fallbackMessage)
-      error.status = response.status
-      error.details = responseBody
-      throw error
-    }
+    const responseBody = parseResponseData(response.data)
 
     const normalizedName = responseBody?.displayName || responseBody?.username || username
 
@@ -434,7 +423,7 @@ export const loginUser = async (username, attempt = 0) => {
       username: normalizedName,
     }
   } catch (error) {
-    if (error.name === 'AbortError') {
+    if (isAbortLikeError(error) || isTimeoutError(error)) {
       if (attempt < LOGIN_MAX_RETRIES) {
         console.warn(
           `[api] Login timeout (intento ${attempt + 1}). Reintentando hasta ${LOGIN_MAX_RETRIES} vez/veces.`
@@ -444,6 +433,27 @@ export const loginUser = async (username, attempt = 0) => {
       throw new Error(
         'El servicio de autenticacion tardo demasiado en responder. Volve a intentarlo.'
       )
+    }
+
+    if (error?.response) {
+      const responseBody = parseResponseData(error.response.data)
+
+      const backendMessage =
+        responseBody?.message ||
+        responseBody?.error ||
+        responseBody?.details ||
+        responseBody?.status
+
+      const isNameError =
+        error.response.status === 400 || error.response.status === 404
+      const fallbackMessage = isNameError
+        ? 'No encontramos un votante con ese nombre. Verifica los datos e intentalo nuevamente.'
+        : 'No pudimos validar tus datos en este momento. Intentalo de nuevo en unos minutos.'
+
+      const enrichedError = new Error(backendMessage || fallbackMessage)
+      enrichedError.status = error.response.status
+      enrichedError.details = responseBody
+      throw enrichedError
     }
 
     if (error instanceof Error) {
@@ -472,28 +482,12 @@ export const getCandidates = async (institutionId, institutionContext = null) =>
     }
 
   try {
-    const response = await fetch(
-      buildApiUrl(buildInstitutionElectionsPath(institutionId)),
-      {
-        method: 'GET',
-        signal: controller.signal,
-      }
-    )
+    const response = await apiClient.get(buildInstitutionElectionsPath(institutionId), {
+      signal: controller.signal,
+      timeout: ELECTIONS_TIMEOUT_MS,
+    })
 
-    const responseBodyText = await response.text()
-    const responseBody = safeParseJson(responseBodyText)
-
-    if (!response.ok) {
-      const backendMessage =
-        responseBody?.message ||
-        responseBody?.error ||
-        responseBody?.details ||
-        responseBody?.status
-
-      throw new Error(
-        backendMessage || 'No pudimos obtener los candidatos de esta institucion.'
-      )
-    }
+    const responseBody = parseResponseData(response.data)
 
     const electionsPayload = Array.isArray(responseBody)
       ? responseBody
@@ -516,7 +510,7 @@ export const getCandidates = async (institutionId, institutionContext = null) =>
 
     return candidates
   } catch (error) {
-    if (error.name === 'AbortError') {
+    if (isAbortLikeError(error) || isTimeoutError(error)) {
       console.warn('[api] Timeout al consultar elecciones. Usando mock.')
     } else {
       console.warn('[api] Error al obtener elecciones reales. Usando mock.', error)
@@ -564,40 +558,40 @@ export const submitVote = async (userId, candidateId, { electionId } = {}) => {
   const timeoutId = setTimeout(() => controller.abort(), VOTE_TIMEOUT_MS)
 
   try {
-    const response = await fetch(buildApiUrl(VOTE_ENDPOINT), {
-      method: 'POST',
+    const response = await apiClient.post(VOTE_ENDPOINT, sanitizedPayload, {
+      signal: controller.signal,
+      timeout: VOTE_TIMEOUT_MS,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(sanitizedPayload),
-      signal: controller.signal,
     })
 
-    const responseBodyText = await response.text()
-    const responseBody = safeParseJson(responseBodyText) ?? { raw: responseBodyText }
+    const responseBody = parseResponseData(response.data) ?? {}
 
-    if (!response.ok) {
+    return normalizeVoteResponse(responseBody)
+  } catch (error) {
+    if (isAbortLikeError(error) || isTimeoutError(error)) {
+      throw new Error(
+        'El servicio de votos tardo demasiado en responder. Reintentemos en unos segundos.'
+      )
+    }
+
+    if (error?.response) {
+      const responseBody =
+        parseResponseData(error.response.data) ?? { raw: error.response.data }
       const backendMessage =
         responseBody?.message ||
         responseBody?.error ||
         responseBody?.details ||
         responseBody?.status
 
-      const error = new Error(
+      const enrichedError = new Error(
         backendMessage ||
           'No pudimos registrar tu voto en este momento. Por favor, intentalo de nuevo.'
       )
-      error.status = response.status
-      error.details = responseBody
-      throw error
-    }
-
-    return normalizeVoteResponse(responseBody)
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      throw new Error(
-        'El servicio de votos tardo demasiado en responder. Reintentemos en unos segundos.'
-      )
+      enrichedError.status = error.response.status
+      enrichedError.details = responseBody
+      throw enrichedError
     }
 
     if (error instanceof Error) {
